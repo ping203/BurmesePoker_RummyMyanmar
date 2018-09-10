@@ -16,6 +16,10 @@ public class ActivatorEVT {
     public static final String SELECT_ROOM 		= "selectR";
     public static final String SEARCHT 		= "searchT";
     public static final String PLAYNOW          = "playnow";
+    public static final String PLAYNOW2          = "playnow2";
     public static final String LIST_MARK_CREATE = "pctable";
     public static final String CREATE_WITH_SEAT = "createTableWithSeat";
+    public static final String SELECT_G2        = "selectG2";
+    public static final String CREATE_TABLE = "createTable";
+    public static final String BOT_CREATE_TABLE = "botCreateTable";
 }

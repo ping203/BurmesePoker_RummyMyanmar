@@ -7,6 +7,7 @@
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,10 +17,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeMap;
 
 import net.myanmar.rummy.logic.Card;
 import net.myanmar.rummy.logic.CheckCard;
+import static net.myanmar.rummy.logic.CheckCard.checkDiscardAble;
+import static net.myanmar.rummy.logic.CheckCard.checkDoc;
+import static net.myanmar.rummy.logic.CheckCard.checkGroup;
+import static net.myanmar.rummy.logic.CheckCard.checkNgang;
 import net.myanmar.rummy.logic.ConstrainDiscard;
+import net.myanmar.rummy.logic.SortCardAsc;
 import net.myanmar.rummy.logic.TurnStatus;
 import net.myanmar.rummy.utils.GameUtil;
 
@@ -28,6 +37,9 @@ import net.myanmar.rummy.utils.GameUtil;
  * @author hoangchau
  */
 public class test {
+
+    private static final int MAX_CARD_GROUP = 4;
+    private static final int MIN_CARD_GROUP = 3;
 
     private final List<ConstrainDiscard> constrainDiscard = new ArrayList<>();
 
@@ -117,54 +129,1012 @@ public class test {
         return null;
     }
 
-    public void ss() {
+    private static void removeAllListElement(List PaList, List ChiList) {
+        List list = new ArrayList(ChiList);
+        Iterator iterator = PaList.iterator();
+
+        while (iterator.hasNext()) {
+            Object next = iterator.next();
+            /// kiểm tra từng lá bài của player có tồn tại trong từng bộ phỏm của list ko
+            if (list.contains(next)) {
+                list.remove(list.indexOf(next));
+                iterator.remove();
+            }
+
+        }
+    }
+
+    private static List<List<Integer>> groupRankJoker(List<Integer> listCards) {
+        List<List<Integer>> ranks = new ArrayList<>();
+
+        List<Integer> jokers = getJoker(listCards);
+
+        List<Card> cards = new ArrayList<>();
+
+        if (jokers.size() > 0) {
+            for (Integer i : listCards) {
+                cards.add(new Card(i));
+            }
+
+            Map<Integer, List<Integer>> m = getMapRank(cards);
+
+            ///sap xep cac gia tri cua card tu lon den be
+            Map<Integer, List<Integer>> treeMap = new TreeMap<Integer, List<Integer>>(
+                    new Comparator<Integer>() {
+
+                @Override
+                public int compare(Integer o1, Integer o2) {
+                    return o2.compareTo(o1);
+                }
+
+            });
+
+            treeMap.putAll(m);
+
+            for (Map.Entry<Integer, List<Integer>> entry : treeMap.entrySet()) {
+                List<Integer> value = entry.getValue();
+                if (jokers.isEmpty()) {
+                    break;
+                }
+
+                if (value.size() < 2) {
+                    continue;
+                }
+
+                value.add(jokers.get(0));
+                ranks.add(value);
+                jokers.remove(0);
+            }
+
+        }
+
+        return ranks;
+    }
+
+    private static List<Integer> getJoker(List<Integer> lcs) {
+
+        List<Integer> listCards = new ArrayList<>(lcs);
+
+        List<Integer> is = new ArrayList<>();
+
+        for (Iterator<Integer> iterator = listCards.iterator(); iterator.hasNext();) {
+            Integer next = iterator.next();
+            if (new Card(next).isJocker()) {
+                is.add(next);
+                iterator.remove();
+            }
+        }
+
+        return is;
+    }
+
+    private static List<List<Integer>> getSuitCanAppendJoker(List<Card> cards) {
+        Map<Integer, List<Integer>> map = getMapSuit(cards);/// map các lá bài có gía trị số được liệt kê theo key: laf chất của lá bài
+
+        List<List<Integer>> suits = new ArrayList<>();
+
+        for (Map.Entry<Integer, List<Integer>> entry : map.entrySet()) {
+            List<Integer> list = entry.getValue();
+
+            //A23
+            /// sap xep list theo thứ tự để  xuống dưới so sánh chi cần so sanh 2 card liên tiếp nhau
+            /// list đc sắp xếp từ K->Q->J->10->9->...->2->A
+            /// tính cho trường hợp A23
+            Collections.sort(list, new Comparator<Integer>() {
+                @Override
+                public int compare(Integer o1, Integer o2) {
+                    ///check
+                    return (new Card(o2).getN() - 1) % 13 - (new Card(o1).getN() - 1) % 13;
+                }
+
+            });
+
+            int i = 0;
+
+            while (i < list.size() - 1) {
+                List<Integer> is = new ArrayList<>();
+                is.add(list.get(i));
+
+                int j = i + 1;
+                boolean chk = false;
+
+                while (j < list.size()) {
+                    /// 2 lá liền kề hoặc 2 lá cách nhau 1 giá trị để có thể add thêm lá joker
+                    if (new Card(is.get(is.size() - 1)).getN() % 13 - 1 == new Card(list.get(j)).getN() % 13
+                            || new Card(is.get(is.size() - 1)).getN() % 13 - 2 == new Card(list.get(j)).getN() % 13) {
+                        is.add(list.get(j));
+                    }
+                    // neu có 2 lá trong is
+                    if (is.size() == MIN_CARD_GROUP - 1) {
+
+                        for (int k = is.size() - 1; k >= 0; k--) {
+                            list.remove(list.indexOf(is.get(k)));
+                        }
+
+                        suits.add(is);
+
+                        chk = true;
+                        break;
+                    }
+
+                    j++;
+                }
+
+                if (!chk) {
+                    i++;
+                }
+
+            }
+
+            //QKA
+            Collections.sort(list, new Comparator<Integer>() {
+                @Override
+                public int compare(Integer o1, Integer o2) {
+
+                    return new Card(o2).getN() - new Card(o1).getN();
+                }
+
+            });
+            i = 0;
+
+            while (i < list.size() - 1) {
+                List<Integer> is = new ArrayList<>();
+                is.add(list.get(i));
+
+                int j = i + 1;
+                boolean chk = false;
+
+                while (j < list.size()) {
+                    if (new Card(is.get(is.size() - 1)).getN() - 1 == new Card(list.get(j)).getN()
+                            || new Card(is.get(is.size() - 1)).getN() - 2 == new Card(list.get(j)).getN()) {
+                        is.add(list.get(j));
+                    }
+                    if (is.size() == MIN_CARD_GROUP - 1) {
+
+                        for (int k = is.size() - 1; k >= 0; k--) {
+                            list.remove(list.indexOf(is.get(k)));
+                        }
+
+                        suits.add(is);
+
+                        chk = true;
+                        break;
+                    }
+
+                    j++;
+                }
+
+                if (!chk) {
+                    i++;
+                }
+
+            }
+        }
+
+        return suits;
+    }
+
+    private static List<List<Integer>> groupSuitJoker(List<Integer> listCards) {
+        List<List<Integer>> suits = new ArrayList<>();
+
+        List<Integer> jokers = getJoker(listCards);/// lay ra nhưng con joker trong list card
+
+        List<Card> cards = new ArrayList<>();
+
+        if (jokers.size() > 0) {
+            for (Integer i : listCards) {
+                cards.add(new Card(i));
+            }
+
+            List<List<Integer>> is = getSuitCanAppendJoker(cards);/// la ra danh sach- mỗi phần tử của is có 2 lá mà có thể thêm đc con joker
+
+            //for (int j = is.size() - 1; j >= 0; j--) {
+            for (int j = 0; j < is.size(); j++) {
+
+                List<Integer> i = is.get(j);
+
+                ///kiem tra xem con joker nao trong list card của player
+                System.out.println("is: " + is);
+                if (jokers.isEmpty()) {
+                    break;
+                }
+                /// thêm joker vao mỗi cặp để tạo thành 1 phỏm
+                i.add(jokers.get(0));
+                suits.add(i);
+                jokers.remove(0);
+            }
+
+        }
+
+        return suits;
 
     }
 
-    public static void main(String[] args) {
+    public static List<List<Integer>> group(List<Integer> listCards, int numStraight) {
 
-//        test t = new test();
-//        t.addConstrainDiscard(2, 1, TurnStatus.DISCARD);
-//        t.addConstrainDiscard(2, 2, TurnStatus.TAKECARD);
-//        t.addConstrainDiscard(28, 2, TurnStatus.DISCARD);
-//
-//        System.out.println(t.getConstrainDiscard());
-//        System.out.println(t.checkDiscardAble(15, 1, 2));
-//    List<List<Integer>> integers = new ArrayList<>();
-//    
-//    integers.add(new ArrayList<>(Arrays.asList(48,9,35)));
-//    integers.add(new ArrayList<>(Arrays.asList(39,37,38)));
-//    integers.add(new ArrayList<>(Arrays.asList(61,43,44)));
-//    integers.add(new ArrayList<>(Arrays.asList(22,23,24)));
-//    integers.add(new ArrayList<>(Arrays.asList(16)));
-//       
-//            System.out.println(CheckCard.countStraight(integers));
-        List<Card> list = genCard(1);
-        List<Integer> listInt = new ArrayList<>();
-        for (int i = 0; i < list.size(); i++) {
-            Card card = list.get(i);
-            int key = card.getS();
-            int n = card.getN();
-            //listInt.add(card.getI());
-            //System.out.println("card: " + i + ": " + list.get(i) + "\nkey: " + key + "\nN: " + n);
+        List<List<Integer>> suits = groupSuit(listCards);
+
+        for (List<Integer> list : suits) {
+            removeAllListElement(listCards, list);
 
         }
-        listInt.add(13);
-        listInt.add(12);
-        listInt.add(1);
-        listInt.add(2);
-        listInt.add(60);
-        listInt.add(61);
-        Collections.sort(listInt, new Comparator<Integer>() {
+
+        List<List<Integer>> suitsJoker = groupSuitJoker(listCards);
+
+        for (List<Integer> list : suitsJoker) {
+            removeAllListElement(listCards, list);
+        }
+
+        suits.addAll(suitsJoker);
+
+        List<List<Integer>> ranks = groupRank(listCards);
+
+        for (List<Integer> list : ranks) {
+            removeAllListElement(listCards, list);
+
+        }
+
+        List<List<Integer>> ranksJoker = groupRankJoker(listCards);
+
+        for (List<Integer> list : ranksJoker) {
+            removeAllListElement(listCards, list);
+
+        }
+        ranks.addAll(ranksJoker);
+
+        //tìm cây lẻ ghép vào phỏm 3
+        Iterator<Integer> it = listCards.iterator();
+        while (it.hasNext()) {
+            int num = it.next();
+            Card card = new Card(num);
+            if (card.isJocker()) {
+                continue;
+            }
+
+            for (List<Integer> rank : ranks) {
+                if (rank.size() < MIN_CARD_GROUP && rank.size() >= MAX_CARD_GROUP) {
+                    continue;
+                }
+                if (new Card(rank.get(0)).getN() == card.getN()) {
+                    rank.add(num);
+                    it.remove();
+                    break;
+                }
+            }
+
+            for (List<Integer> suit : suits) {
+                if (suit.size() < MIN_CARD_GROUP && suit.size() >= MAX_CARD_GROUP) {
+                    continue;
+                }
+
+                List<Integer> temp = new ArrayList<>(Arrays.asList(suit.get(0), suit.get(0) - 1, suit.get(0) - 2));
+
+                if (temp.get(0) + 1 == num || temp.get(temp.size() - 1) - 1 == num || (num == 13 && temp.get(temp.size() - 1) == 1)) {
+                    suit.add(num);
+                    it.remove();
+                    break;
+                }
+            }
+
+        }
+
+        //tìm phỏm dọc có 4 lá tách ra ghép vào cặp ngang
+        List<Card> cards = new ArrayList<>();
+
+        for (Integer i : listCards) {
+            cards.add(new Card(i));
+        }
+
+        Map<Integer, List<Integer>> map = getMapRank(cards);
+
+        for (Iterator<Map.Entry<Integer, List<Integer>>> iterator = map.entrySet().iterator(); iterator.hasNext();) {
+            Map.Entry<Integer, List<Integer>> entry = iterator.next();
+            List<Integer> list = entry.getValue();
+            Integer key = entry.getKey();
+
+            if (list.size() == 2) {
+                for (List<Integer> is : suits) {
+                    if (is.size() == MIN_CARD_GROUP) {
+                        continue;
+                    }
+                    Collections.sort(is, new Comparator<Integer>() {
+                        @Override
+                        public int compare(Integer o1, Integer o2) {
+                            return new Card(o1).getN() % 13 - new Card(o2).getN() % 13;
+                        }
+
+                    });
+
+                    int end = is.size() - 1;
+
+                    if (is.contains(60) || is.contains(61)) {
+                        end = end - 1;
+                    }
+
+                    if (new Card(is.get(0)).getN() == new Card(list.get(0)).getN()
+                            || new Card(is.get(end)).getN() == new Card(list.get(0)).getN()) {
+                        int index = new Card(is.get(0)).getN() == new Card(list.get(0)).getN() ? 0 : end;
+                        removeAllListElement(listCards, list);
+                        list.add(is.get(index));
+                        ranks.add(list);
+                        is.remove(index);
+                    }
+
+                }
+            }
+
+        }
+
+        //ghép 2 cây joker vào 1 cây lẻ
+        List<Integer> jokers = getJoker(listCards);
+        removeAllListElement(listCards, jokers);
+        while (jokers.size() >= 2 && listCards.size() > 0) {
+
+            List<Integer> l = new ArrayList<>(Arrays.asList(listCards.get(0), jokers.get(0), jokers.get(1)));
+            suits.add(l);
+            jokers.remove(0);
+            jokers.remove(1);
+            listCards.remove(0);
+        }
+        listCards.addAll(jokers);
+
+        //ghép joker vào phỏm 3
+        Iterator<Integer> it1 = listCards.iterator();
+        int k = 0;
+        while (it1.hasNext()) {
+            int num = it1.next();
+            Card card = new Card(num);
+            if (!card.isJocker()) {
+                continue;
+            }
+
+            for (List<Integer> rank : ranks) {
+                if (rank.size() >= MIN_CARD_GROUP && rank.size() < MAX_CARD_GROUP) {
+                    rank.add(num);
+                    it1.remove();
+                    k++;
+                    break;
+                }
+            }
+            if (k > 0) {
+                continue;
+            }
+            System.out.println("it11111: " + card);
+            for (List<Integer> suit : suits) {
+                if (suit.size() >= MIN_CARD_GROUP && suit.size() < MAX_CARD_GROUP) {
+                    suit.add(num);
+                    it1.remove();
+                    break;
+                }
+            }
+
+        }
+
+        List<List<Integer>> list = new ArrayList<>();
+
+        System.out.println("suits: " + suits);
+        System.out.println("ranks: " + ranks);
+        System.out.println("lítcard: " + listCards);
+
+        list.addAll(suits);
+        list.addAll(ranks);
+        if (!listCards.isEmpty()) {
+            list.add(listCards);
+        }
+
+        System.out.println("list: " + list);
+
+        return list;
+    }
+
+    public static Map<Integer, List<Integer>> getMapRank(List<Card> cards) {
+        List<Integer> is = new ArrayList<>();
+        for (Card card : cards) {
+            is.add(card.getI());
+        }
+        Collections.sort(is, new Comparator<Integer>() {
             @Override
             public int compare(Integer o1, Integer o2) {
 
-                return new Card(o2).getN() % 13 - new Card(o1).getN() % 13;
+                return (new Card(o1).getN() - 1) % 13 - (new Card(o2).getN() - 1) % 13;
             }
 
         });
-        
-//         Collections.sort(listInt, new Comparator<Integer>() {
+        Map<Integer, List<Integer>> map = new HashMap<>();
+        for (int i = 0; i < cards.size(); i++) {
+            ///bo ra con joker
+            if (cards.get(i).getN() == 60 || cards.get(i).getN() == 61) {
+                continue;
+            }
+            List<Integer> list;
+            int key = cards.get(i).getN(); /// key là so của lá
+            if (map.containsKey(key)) { /// xem trong map da có so đó
+                list = map.get(key);/// lấy ra giá trị số của các lá
+                list.add(cards.get(i).getI());
+            } else {
+                list = new ArrayList<>();
+                list.add(cards.get(i).getI());  /// lấy ra giá trị số của lá
+                map.put(key, list);             /// đưa giá trị số vào map đúng với key
+            }
+
+        }
+        return map;
+    }
+
+    private static List<List<Integer>> groupRank(List<Integer> listCards) {
+        List<List<Integer>> ranks = new ArrayList<>();
+        List<Card> cards = new ArrayList<>();
+
+        for (Integer i : listCards) {
+            cards.add(new Card(i));
+        }
+
+        Map<Integer, List<Integer>> map = getMapRank(cards); /// tra về map vs key là so của lá   
+        /// value là cac la co gia tri so do
+
+        for (Map.Entry<Integer, List<Integer>> entry : map.entrySet()) {
+            List<Integer> value = entry.getValue();
+
+            int i = 0;
+            while (i < value.size() - 1) {
+                List<Integer> l = new ArrayList<>();
+                l.add(value.get(i));
+                int j = i + 1;
+
+                while (j < value.size()) {
+
+                    Card cardi = new Card(value.get(i));
+                    Card cardj = new Card(value.get(j));
+
+                    if (cardi.getN() == cardj.getN()) {/// nếu cùng giá trị
+
+                        l.add(value.get(j));
+                    }
+
+                    if (l.size() == 3) {
+                        break;
+                    }
+                    j++;
+                }
+
+                if (l.size() == 3) {
+                    ranks.add(l);
+                    i = i + l.size();
+                } else {
+                    i++;
+                }
+
+            }
+        }
+
+        return ranks;
+
+    }
+
+    private static List<List<Integer>> groupRank1(List<Integer> listCards) {
+        List<List<Integer>> ranks = new ArrayList<>();
+        List<Card> cards = new ArrayList<>();
+
+        for (Integer i : listCards) {
+            cards.add(new Card(i));
+        }
+
+        Map<Integer, List<Integer>> map = getMapRank(cards); /// tra về map vs key là so của lá   
+        /// value là cac la co gia tri so do
+
+        for (Map.Entry<Integer, List<Integer>> entry : map.entrySet()) {
+            List<Integer> value = entry.getValue();
+
+            if (value.size() == 3) {
+                ranks.add(value);
+            }
+
+            if (value.size() > 3) {
+                List<Integer> l = new ArrayList<>();
+                for (Integer integer : value) {
+                    l.add(integer);
+                    if (l.size() == 3) {
+                        break;
+                    }
+                }
+                ranks.add(l);
+            }
+
+        }
+
+        return ranks;
+
+    }
+
+    ///
+    private static List<List<Integer>> groupSuit(List<Integer> listCards) {
+        List<Card> cards = new ArrayList<>();
+
+        for (Integer i : listCards) {
+            cards.add(new Card(i));
+        }
+
+        Map<Integer, List<Integer>> map = getMapSuit(cards);/// map các lá bài có gía trị số được liệt kê theo key: laf chất của lá bài
+
+        List<List<Integer>> suits = new ArrayList<>();
+
+        for (Map.Entry<Integer, List<Integer>> entry : map.entrySet()) {
+            List<Integer> list = entry.getValue(); /// lay ra giá trị số của các lá theo chất
+
+            //A23
+            /// sap xep list theo thứ tự để  xuống dưới so sánh chi cần so sanh 2 card liên tiếp nhau
+            /// list đc sắp xếp từ Q->J->A->K
+            /// tính cho trường hợp A23
+            Collections.sort(list, new Comparator<Integer>() {
+                @Override
+                public int compare(Integer o1, Integer o2) {
+
+                    return ((new Card(o2).getN() % 13) + 1) - ((new Card(o1).getN() % 13) + 1);
+                }
+
+            });
+            int i = 0;
+
+            while (i < list.size() - 1) {
+                List<Integer> is = new ArrayList<>();
+                is.add(list.get(i));
+
+                int j = i + 1;
+                boolean chk = false;
+
+                while (j < list.size()) {
+                    /// is.get(is.size() - 1)) lá bài vừa thêm vào gần nhất de ss voi la trong list
+                    if (new Card(is.get(is.size() - 1)).getN() % 13 - 1 == new Card(list.get(j)).getN() % 13) {/// kiem tra xem có phai là 2 lá có giá trị liền nhau
+                        /// (vd: 4♣ và 5♣)
+                        is.add(list.get(j));
+                    }
+                    /// is có tối thiểu 3 lá tạo thành 1 phỏm
+                    if (is.size() == 3) {
+
+                        for (int k = is.size() - 1; k >= 0; k--) {
+                            list.remove(list.indexOf(is.get(k)));
+                        }
+
+                        suits.add(is);/// them vao suits bộ phỏm thỏa mãn
+
+                        chk = true;
+                        break;
+                    }
+
+                    j++;
+                }
+
+                if (!chk) {
+                    i++;
+                }
+
+            }
+
+            //QKA
+            /// sap xep list theo thứ tự để  xuống dưới so sánh chi cần so sanh 2 card liên tiếp nhau
+            ///list dc sap xep A->K->Q->2
+            /// tính cho trường hợp QKA
+            Collections.sort(list, new Comparator<Integer>() {
+                @Override
+                public int compare(Integer o1, Integer o2) {
+
+                    return new Card(o2).getN() - new Card(o1).getN();
+                }
+
+            });
+            i = 0;
+
+            while (i < list.size() - 1) {
+                List<Integer> is = new ArrayList<>();
+                is.add(list.get(i));
+
+                int j = i + 1;
+                boolean chk = false;
+
+                while (j < list.size()) {
+                    if (new Card(is.get(is.size() - 1)).getN() - 1 == new Card(list.get(j)).getN()) {
+                        is.add(list.get(j));
+                    }
+                    if (is.size() == 3) {
+
+                        for (int k = is.size() - 1; k >= 0; k--) {
+                            list.remove(list.indexOf(is.get(k)));
+                        }
+
+                        suits.add(is);
+
+                        chk = true;
+                        break;
+                    }
+
+                    j++;
+                }
+
+                if (!chk) {
+                    i++;
+                }
+
+            }
+
+        }
+
+        return suits;
+    }
+
+    ///
+    private static Map<Integer, List<Integer>> getMapSuit(List<Card> cards) {
+        Map<Integer, List<Integer>> map = new HashMap<>();
+        for (int i = 0; i < cards.size(); i++) {
+            /// neu la joker thi cho tiep tuc
+            if (cards.get(i).getN() == 60 || cards.get(i).getN() == 61) {
+                continue;
+            }
+            List<Integer> list;
+            int key = cards.get(i).getS();/// lay ra chất cua la hien tai theo int (1,2,3,4)
+            /// dung chất theo int để làm key trong map
+            /// nhung card có cùng chất thì lưu trong cùng key ở map
+            /// kiem tra xem chất đó có trong map hay chua
+            if (map.containsKey(key)) {
+                list = map.get(key);    /// lay ra cac card co cùng chất
+                list.add(cards.get(i).getI());/// them card trong cards vao list
+            } else {
+                ///neu chua co chất bai của lá đang xet trong map
+                list = new ArrayList<>();
+                list.add(cards.get(i).getI()); /// lay ra giá trị số của lá bài
+                map.put(key, list);             ///them vao map
+            }
+
+        }
+        ///map(key: là các chất của lá bài
+        ///value: là giá trị số của từng lá bài theo từng key
+        return map;
+    }
+
+    //
+    public static boolean IsTakeCard(List<Card> lsCard, Card cardCheck, int mark) { //Kiem tra quan bai co an duoc khong
+        try {
+            //Check phom doc
+            if (cardCheck.getI() == 60 || cardCheck.getI() == 61) {
+                return true;
+            }
+            Collections.sort(lsCard, new SortCardAsc());
+            for (int i = 0; i < lsCard.size() - 1; i++) {
+                if (lsCard.get(i).getS() != cardCheck.getS()) {/// kiem tra co cùng chất ko
+                    continue;
+                }
+                for (int j = i + 1; j < lsCard.size(); j++) {
+                    if (lsCard.get(j).getS() != cardCheck.getS()) {/// kiem tra tiep la cung chat
+                        continue;
+                    }
+                    ///check < i < j
+                    if (lsCard.get(i).getN() == cardCheck.getN() + 1 && lsCard.get(j).getN() == cardCheck.getN() + 2) {
+                        return true;
+                    }
+                    /// nam giữa
+                    if (lsCard.get(i).getN() == cardCheck.getN() - 1 && lsCard.get(j).getN() == cardCheck.getN() + 1) {
+                        return true;
+                    }
+                    ///to nhất
+                    if (lsCard.get(i).getN() == cardCheck.getN() - 2 && lsCard.get(j).getN() == cardCheck.getN() - 1) {
+                        return true;
+                    }
+                    ///A23
+                    if (cardCheck.getN() == 14 && lsCard.get(i).getN() == 2 && lsCard.get(j).getN() == 3) {
+                        return true;
+                    }
+
+                    ///23A
+                    if (cardCheck.getN() == 2 && lsCard.get(i).getN() == 3 && lsCard.get(j).getN() == 14) {
+                        return true;
+                    }
+                    ///32A
+                    if (cardCheck.getN() == 3 && lsCard.get(i).getN() == 2 && lsCard.get(j).getN() == 14) {
+                        return true;
+                    }
+                }
+            }
+            //Check phom ngang
+            /// các lá có gía trị = nhau và chất #
+            for (int i = 0; i < lsCard.size() - 1; i++) {
+                if (lsCard.get(i).getN() != cardCheck.getN()) {/// có cùng giá trị
+                    continue;
+                }
+                if (lsCard.get(i).getS() == cardCheck.getS()) {/// cùng chất
+                    continue;
+                }/// cùng giá trị và khác chất
+                for (int j = i + 1; j < lsCard.size(); j++) {
+                    if (lsCard.get(j).getN() != cardCheck.getN()) {/// ko có lá nào = card check
+                        continue;
+                    }
+                    if (lsCard.get(j).getS() == cardCheck.getS()) { /// cùng chất
+                        continue;
+                    }
+                    if (lsCard.get(j).getS() == lsCard.get(i).getS()) { /// i va j cung chat
+                        continue;
+                    }
+//					Logger.getLogger("RummyHandler").info("==>Check An phom ngang:" + cardCheck.getN() + "-" + lsCard.get(i).getN() + "-" + lsCard.get(j).getN());
+                    return true;
+                }
+            }
+            //Random ty le de tim ca doc
+            int rd = (new Random()).nextInt(100);
+            if ((mark > 5000 && rd > 60) || (mark > 500 && rd > 70) || (mark <= 500 && rd > 80)) {
+//				Logger.getLogger("RummyHandler").info("==>Check An Ca:" + mark + "-" + rd);
+                for (int i = 0; i < lsCard.size(); i++) {
+                    if (lsCard.get(i).getS() != cardCheck.getS()) {/// ko cung chất
+                        continue;
+                    }
+//					Logger.getLogger("RummyHandler").info("==>Check An Ca:" + cardCheck.getN() + "-" + lsCard.get(i).getN());
+                    if (lsCard.get(i).getN() == cardCheck.getN() + 1 || lsCard.get(i).getN() == cardCheck.getN() - 1
+                            || lsCard.get(i).getN() == cardCheck.getN() + 2 || lsCard.get(i).getN() == cardCheck.getN() - 2) {
+                        return true;
+                    }
+                    if (cardCheck.getN() == 14 && (lsCard.get(i).getN() == 2 || lsCard.get(i).getN() == 3)) {
+                        return true;
+                    }
+                    if ((cardCheck.getN() == 2 || cardCheck.getN() == 3) && lsCard.get(i).getN() == 14) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // TODO: handle exception
+
+        }
+        return false;
+    }
+
+    private boolean checkDiscardAble(int cardId, int playerId, int next, List<ConstrainDiscard> constrainDiscard) {
+
+        for (ConstrainDiscard cd : constrainDiscard) {
+
+            // check đánh cây bài vừa ăn
+            if (cd.getCardId() == cardId && cd.getPlayerTakecard() == playerId && !cd.isJustTakePlace()) {
+                return false;
+            }
+
+            //check đánh cây bài có số trùng với cây bài trước đó đã đánh cho người kia ăn.
+            ///check trong list ConstrainDiscard xem co quan bai trung so vs cardId
+            ///&& la day co phai do playerId da tung danh ra hay ko
+            ///&& la day co phai do nguoi kia da an hay ko
+            ///&& la day da dc next danh ra chua
+            if (cd.getPlayerTakecard() == next && cd.getPlayerDiscard() == playerId && new Card(cardId).getN() == new Card(cd.getCardId()).getN() && cd.isRequired()) {
+                return false;
+            }
+
+        }
+
+        return true;
+    }
+
+    private static boolean checkCouple(int iCardCheck, List<Integer> iListCard) {
+
+        List<Integer> listTmp = new ArrayList<>(iListCard);
+        //System.out.println("size1: " + listTmp.size());
+        listTmp.remove(listTmp.indexOf(iCardCheck));
+        //System.out.println("size2: " + listTmp.size());
+        Card cardCheck = new Card(iCardCheck);
+        System.out.println("CardCheck: " + cardCheck.toString());
+        List<Card> listCard = new ArrayList<>();
+        for (int i = 0; i < listTmp.size(); i++) {
+            listCard.add(new Card(listTmp.get(i)));
+
+        }
+
+        for (Card card : listCard) {
+            if (card.getS() != cardCheck.getS()) {
+                continue;
+            }
+
+            if (card.getN() + 1 == cardCheck.getN() || card.getN() + 2 == cardCheck.getN()
+                    || card.getN() - 1 == cardCheck.getN() || card.getN() - 2 == cardCheck.getN()) {
+                //System.out.println("Couple lien nhau: " + cardCheck.toString());
+                return true;
+            }
+
+            if (cardCheck.getN() == 14 && card.getN() == 2 || cardCheck.getN() == 14 && card.getN() == 3) {
+                //System.out.println("check 2");
+                return true;
+            }
+            if (cardCheck.getN() == 2 && card.getN() == 14 || cardCheck.getN() == 3 && card.getN() == 14) {
+                //System.out.println("check 3");
+                return true;
+            }
+
+        }
+
+        for (Card card : listCard) {
+            if (card.getN() == cardCheck.getN()) {
+                System.out.println("check 4");
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static int checkCardToDis(List<Card> listCard) {
+
+        List<Integer> is = new ArrayList<>();
+        for (Card card : listCard) {
+            is.add(card.getI());
+        }
+        Collections.sort(is, new Comparator<Integer>() {
+            @Override
+            public int compare(Integer o1, Integer o2) {
+
+                return (new Card(o1).getN() - 1) % 13 - (new Card(o2).getN() - 1) % 13;
+            }
+
+        });
+        int cardDis = is.get(0);
+        List<List<Integer>> lsphom = CheckCard.group(is);
+
+        for (int i1 = lsphom.size() - 1; i1 >= 0; i1--) {
+            List<Integer> list = lsphom.get(i1);
+            System.out.println("Phom1: ");
+            for (Integer integer : list) {
+                Card c2 = new Card(integer);
+                System.out.println("\tCard1: " + c2.toString());
+            }
+            if (!checkGroup(list)) {
+
+                System.out.println("not group");
+                for (int i = 0; i < list.size(); i++) {
+
+                    System.out.println("Checkkkkkk: " + new Card(list.get(i)));
+                    if (!CheckCard.checkCouple(list.get(i), list)) {
+                        //System.out.println("Not couple");
+                        if (list.get(i) == 60 || list.get(i) == 61) {
+                            continue;
+                        }
+                        System.out.println("Card dis1: " + new Card(cardDis).toString());
+                        cardDis = list.get(i);
+                        return cardDis;
+
+                    }
+                }
+                for (int i = 0; i < list.size(); i++) {
+
+                    cardDis = list.get(i);
+                    System.out.println("Card dis2: " + cardDis);
+                    return cardDis;
+
+                }
+            } else {
+                if (list.size() == 4) {
+                    //System.out.println("Card dis3: " + cardDis);
+                    cardDis = list.get(0);
+                }
+
+            }
+        }
+        ///ko tim dc la bai nao thoa man
+        ///tach rank 3 nho nhat
+        for (int i1 = lsphom.size() - 1; i1 >= 0; i1--) {
+            List<Card> cardPhom = new ArrayList<>();
+            List<Integer> list = lsphom.get(i1);
+            for (int i = 0; i < list.size(); i++) {
+                cardPhom.add(new Card(list.get(i)));
+            }
+            if (checkNgang(cardPhom)) {
+                cardDis = list.get(0);
+                return cardDis;
+            }
+        }
+        ///ko co rank 3 la
+        ///tach suit nho nhat
+        for (int i1 = lsphom.size() - 1; i1 >= 0; i1--) {
+            List<Card> cardPhom = new ArrayList<>();
+            List<Integer> list = lsphom.get(i1);
+            for (int i = 0; i < list.size(); i++) {
+                cardPhom.add(new Card(list.get(i)));
+            }
+            ///sap xep de danh ra quan bai lon nhat
+            Collections.sort(list, new Comparator<Integer>() {
+                @Override
+                public int compare(Integer o1, Integer o2) {
+
+                    return (new Card(o2).getN() - 1) % 13 - (new Card(o1).getN() - 1) % 13;
+                }
+
+            });
+            if (checkDoc(cardPhom)) {
+                cardDis = list.get(0);
+                return cardDis;
+            }
+        }
+
+        return cardDis;
+    }
+
+    ///
+    public static void main(String[] args) {
+
+        List<Integer> listInt = new ArrayList<>();
+
+        List<Integer> listTmp = new ArrayList<>();
+//        listTmp.add(12);
+//        listTmp.add(14);
+//        listTmp.add(26);
+//        listTmp.add(60);
+//        listTmp.add(61);
+//        listTmp.add(23); 
+//        listTmp.add(25);
+//        listTmp.add(23);
+//        listTmp.add(49);
+//        listTmp.add(49);
+        ///listTest
+        //29 4♦,42 4♥,42 4♥,6 7♠,7 8♠,20 8♣,33 8♦,33 8♦,21 9♣,22 10♣,35 10♦,61 JKR,61 JKR,3 4♠
+        //29 4♦,42 4♥,42 4♥,7 8♠,20 8♣,33 8♦,33 8♦,21 9♣,9 10♠,22 10♣,35 10♦,61 JKR,61 JKR,6 7♠]
+        //42 4♥,5 6♠,44 6♥,7 8♠,10 J♠,10 J♠,49 J♥,37 Q♦,38 K♦,51 K♥,39 A♦,52 A♥,60 JKB,36 J♦]
+        //2 3♠,7 8♠,8 9♠,22 10♣,35 10♦,48 10♥,48 10♥,24 Q♣,25 K♣,13 A♠,26 A♣,60 JKB,9 10♠
+        //27 2♦,40 2♥,28 3♦,3 4♠,16 4♣,7 8♠,8 9♠,9 10♠,10 J♠,37 Q♦,37 Q♦,50 Q♥,52 A♥,17 5♣]
+        listTmp.add(27);
+        listTmp.add(40);
+        listTmp.add(28);
+        listTmp.add(3);
+        listTmp.add(16);
+        listTmp.add(7);
+        //listTmp.add(33);
+        listTmp.add(8);
+        listTmp.add(9);
+        listTmp.add(10);
+        listTmp.add(37);
+        listTmp.add(37);
+        listTmp.add(50);
+        listTmp.add(52);
+       listTmp.add(17);
+//        listTmp.add(36);
+//        listTmp.add(24);
+
+///
+        List<Card> list = genCard(2);
+        for (int i = 0; i < list.size(); i++) {
+
+            //listInt.add(list.get(i).getI());
+//            if (listInt.size() == 13) {
+//                break;
+//            }
+//            listTmp.add(list.get(i).getI());
+//            if (listTmp.size() == 14) {
+//                break;
+//            }
+            Card card = list.get(i);
+            int key = card.getS();
+            int n = card.getN();
+            listInt.add(card.getI());
+            System.out.println("card: " + card.getI() + ": " + list.get(i) + "\nkey: " + key + "\nN: " + n);
+
+        }
+
+        System.out.println("=====================================");
+        List<Card> listCardCheck = new ArrayList<>();
+        for (int i = 0; i < listTmp.size(); i++) {
+            Card card = new Card(listTmp.get(i));
+            listCardCheck.add(card);
+        }
+
+        //System.out.println("check take card: " + CheckCard.IsTakeCard(listCardCheck, new Card(42), 10));
+        //tìm cây lẻ ghép vào phỏm 3
+        ///tim la bai lon nhat co the ghep dc
+        List<Card> cardSort = new ArrayList<>();
+        for (Integer cardInt : listTmp) {
+            Card c = new Card(cardInt);
+            cardSort.add(c);
+        }
+        Collections.sort(listTmp, new Comparator<Integer>() {
+            @Override
+            public int compare(Integer o1, Integer o2) {
+
+                return (new Card(o2).getN() - 1) % 13 - (new Card(o1).getN() - 1) % 13;
+            }
+
+        });
+        int cardInt = checkCardToDis(listCardCheck);
+        Card c = new Card(cardInt);
+        System.out.println("Card Dis: " + c.toString());
+//        Collections.sort(listTmp, new Comparator<Integer>() {
 //                @Override
 //                public int compare(Integer o1, Integer o2) {
 //
@@ -172,13 +1142,103 @@ public class test {
 //                }
 //
 //            });
-        for (int i = 0; i < listInt.size(); i++) {
-            Card card = new Card(listInt.get(i));
-            int key = card.getS();
-            int n = card.getN();
-            //listInt.add(card.getI());
-            System.out.println("card: " + i + ": " + card.toString() + "\nkey: " + key + "\nN: " + n);
+//        for (int i = 0; i < listTmp.size(); i++) {
+//            Card c1 = new Card(listTmp.get(i));
+//            System.out.println("\tCard sort: " + c1.toString());
+//        }
+//        List<List<Integer>> groupRankJoker = groupRankJoker(listTmp);
+//        for (int i = 0; i < groupRankJoker.size(); i++) {
+//            List<Integer> listInt1 = groupRankJoker.get(i);
+//            System.out.println("Rank: " + i);
+//            for (int j = 0; j < listInt1.size(); j++) {
+//                Card card1 = new Card(listInt1.get(j));
+//                System.out.println("\tCard: " + card1.toString());
+//            }
+//
+//        }
+//        List<Card> listCardCheck = new ArrayList<>();
+//        for (int i = 0; i < listTmp.size(); i++) {
+//            Card card = new Card(listTmp.get(i));
+//            listCardCheck.add(card);
+//        }
+//        Map<Integer, List<Integer>> getMapRank = getMapRank(listCardCheck);
+//        Set<Integer> set = getMapRank.keySet();
+//
+////        
+        List<List<Integer>> group = CheckCard.group(listTmp);
+        int countSanh = 0;
+        int fund = 0;
+        for (int i = 0; i < group.size(); i++) {
+            List<Integer> lst = group.get(i);
+            List<Card> listCard = new ArrayList<>();
+            System.out.println("Phom: ");
+            Collections.sort(lst, new Comparator<Integer>() {
+                @Override
+                public int compare(Integer o1, Integer o2) {
 
+                    return (new Card(o2).getN() - 1) % 13 - (new Card(o1).getN() - 1) % 13;
+                }
+
+            });
+            for (int j = 0; j < lst.size(); j++) {
+                Card c1 = new Card(lst.get(j));
+                listCard.add(c1);
+                System.out.println("\tCard: " + c1.toString());
+            }
+            if (CheckCard.checkNgang(listCard)) {
+                System.out.println("Check Ngang");
+            }
+            if (CheckCard.checkDoc(listCard)) {
+                System.out.println("Check doc");
+            }
+        }
+//            boolean check = CheckCard.checkGroup(lst);
+//            //System.out.println("Check : " + check);
+//            boolean checkPhomDoc = CheckCard.checkDoc(listCard);
+//            if (CheckCard.checkDoc(listCard) && CheckCard.checkGroup(lst)) {
+//                countSanh++;
+//            }
+//
+//            //System.out.println("Check phom doc: " + checkPhomDoc);
+//            if (!CheckCard.checkGroup(lst)) {
+//                for (Integer i1 : lst) {
+//                    Card c = new Card(i1);
+//                    if (!c.isJocker()) {
+//                        //player.setFund(player.getFund() - c.calc());
+//                        fund += c.calc();
+//                    }
+//                }
+//            }
+//        }
+//        System.out.println("Fund: " + fund);
+//        //System.out.println("Count sanh: " + countSanh);
+//        boolean checkU = CheckCard.checkDeclare(listCardCheck, 2);
+//        System.out.println("check u: " + checkU);
+//        int countStraigh = CheckCard.countStraight(group);
+//        System.out.println("Count sanh 2: " + countStraigh);
+        System.out.println("=======================================");
+        System.out.println("***************************************");
+        System.out.println("size: " + listTmp.size());
+
+        Card card1 = new Card(3);
+        System.out.println("char: " + card1.toString());
+        System.out.println("xxx: " + card1.getI());
+        System.out.println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+        List<Integer> listTest = new ArrayList<>();
+        listTest.add(1);
+        listTest.add(2);
+        listTest.add(3);
+        listTest.add(4);
+        System.out.println("After");
+        for (int i = 0; i < listTest.size(); i++) {
+            System.out.println("\tTest: " + listTest.get(i));
+            
+        }
+        listTest.remove(0);
+        System.out.println("Before");
+        for (int i = 0; i < listTest.size(); i++) {
+            System.out.println("\tTest: " + listTest.get(i));
+            
         }
     }
 }

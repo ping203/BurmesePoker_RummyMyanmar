@@ -25,25 +25,22 @@ import net.myanmar.rummy.utils.GameUtil;
 
 public class Processor implements GameProcessor {
 
-    private static final Logger LOGGER = Logger.getLogger(Processor.class);
+    private static final Logger LOGGER = Logger.getLogger("RUMMY_PROCESSOR");
     private final JsonParser parser = new JsonParser();
 
     private final ServiceContract serviceContract;
-    
+
     public Processor(GameContext context) {
         this.serviceContract = context.getServices().getServiceInstance(ServiceContract.class);
     }
-    
-
 
     @Override
     public void handle(GameDataAction action, Table table) {
         try {
             String message = new String(action.getData().array());
-            LOGGER.info("tableId:" + table.getId() +  "Player:  " + action.getPlayerId() +  " Incoming message: " + message);
+            LOGGER.info("tableId:" + table.getId() + "Player:  " + action.getPlayerId() + " Incoming message: " + message);
             JsonObject je = (JsonObject) parser.parse(message);
             RummyBoard board = (RummyBoard) table.getGameState().getState();
-            
 
             if (je.get("evt") != null) {
                 String evt = je.get("evt").getAsString();
@@ -60,7 +57,7 @@ public class Processor implements GameProcessor {
                         board.takeCardDeck(table, action.getPlayerId(), false);
                         break;
                     case EVT.DATA_DISCARD:
-                         int[] is = GameUtil.gson.fromJson(je.get("C").getAsJsonArray(), int[].class);
+                        int[] is = GameUtil.gson.fromJson(je.get("C").getAsJsonArray(), int[].class);
                         board.disCard(table, action.getPlayerId(), is, false);
                         break;
                     case EVT.DATA_TAKE_CARD_PLACES:
@@ -73,8 +70,7 @@ public class Processor implements GameProcessor {
                         break;
                     case EVT.DATA_PLAYER_DECLARE:
                         List<List<Double>> doubles = GameUtil.gson.fromJson(je.get("Arr").getAsJsonArray(), ArrayList.class);
-                        
-                        
+
                         List<List<Integer>> lsphom = new ArrayList<>();
                         for (List<Double> aDouble : doubles) {
                             List<Integer> integers = new ArrayList<>();
@@ -83,8 +79,8 @@ public class Processor implements GameProcessor {
                             }
                             lsphom.add(integers);
                         }
-                        
-                        board.declare(table, action.getPlayerId(), lsphom, false);
+
+                        board.declare(table, action.getPlayerId(), lsphom, false, serviceContract);
                         break;
                     case EVT.DATA_FOLD_CARD:
                         board.foldCard(table, action.getPlayerId(), false);
@@ -107,21 +103,22 @@ public class Processor implements GameProcessor {
                         if (pid != 0) {
                             LeaveAction la = new LeaveAction(pid, table.getId());
                             table.getScheduler().scheduleAction(la, 0);
-                            
+
                             Packet packet = new net.myanmar.rummy.logic.votransfer.Packet("0", GameUtil.strKick_Err1_TH);
                             table.getNotifier().notifyPlayer(pid, GameUtil.toDataAction(pid, table.getId(),
                                     packet));
-                            
+
                             LOGGER.info(new PlayerAction(EVT.DATA_KICK_TABLE, "", pid, table.getId(), packet));
-                            
+
                         } else {
                             Packet packet = new net.myanmar.rummy.logic.votransfer.Packet("0", GameUtil.strKick_Err2_TH);
                             table.getNotifier().notifyPlayer(pid, GameUtil.toDataAction(pid, table.getId(),
                                     packet));
-                            
+
                             LOGGER.info(new PlayerAction(EVT.DATA_KICK_TABLE, "", pid, table.getId(), packet));
                         }
                         break;
+                    ///====> SEND GAME DATA ====> {"evt":"autoExit"}
                     case EVT.DATA_AUTO_EXIT:
                         board.autoExit(table, action.getPlayerId());
                         break;
@@ -131,9 +128,9 @@ public class Processor implements GameProcessor {
                     case EVT.DATA_TIP_DEALER:
                         board.tipDealer(table, action.getPlayerId(), serviceContract);
                         break;
-                        
+
                     case EVT.DATA_CONFIRM_DECLARE:
-                        
+
                         boolean b = je.get("confirm").getAsBoolean();
                         board.cancelConfirmDeclare(table, action.getPlayerId());
                         break;
@@ -142,7 +139,7 @@ public class Processor implements GameProcessor {
                 }
 
             } else {
-                
+
             }
         } catch (JsonSyntaxException ex) {
             LOGGER.error(ex.getMessage(), ex);
@@ -183,7 +180,7 @@ public class Processor implements GameProcessor {
                     board.foldCard(table, le.getPid(), true);
                     break;
                 case EVT.OBJECT_TIMEOUT:
-                    board.playTimeout(table, le.getPid(), le.getTurnStatus(), le.getCardId());
+                    board.playTimeout(table, le.getPid(), le.getTurnStatus(), le.getCardId(), serviceContract);
                     break;
                 case EVT.OBJECT_PLAYER_DISCONNECT:
                     board.playerDisconnected(table, le.getPid());
@@ -198,7 +195,7 @@ public class Processor implements GameProcessor {
                                 board.disCard(table, le.getPid(), null, true);
                                 break;
                             case DECLARE:
-                                board.declare(table, le.getPid(), null, true);
+                                board.declare(table, le.getPid(), null, true, serviceContract);
                                 break;
                             default:
                                 break;

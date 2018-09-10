@@ -62,7 +62,9 @@ public class RummyBoard implements Serializable {
 
     public static final boolean DEBUG = false;
     private final Object lock = new Object();
-    private static final Logger LOGGER = Logger.getLogger(RummyBoard.class);
+    private static final Logger LOGGER = Logger.getLogger("IFRS_BOT_RUMMY");
+
+    private static int GAMEID = 8819;
 
     /**
      * Trang thái bàn
@@ -73,7 +75,7 @@ public class RummyBoard implements Serializable {
     /**
      * Turn danh bài hiện tại
      */
-    private int currTurn;
+    private int currTurn = -1;
 
     /**
      * Id của chủ bàn
@@ -110,8 +112,7 @@ public class RummyBoard implements Serializable {
      */
 //    private int minGold = mark;
     /**
-     * danh sách player ngồi trong bàn
-     * index = currTurn
+     * danh sách player ngồi trong bàn index = currTurn
      */
     private final List<Player> players = new ArrayList<>();
 
@@ -119,6 +120,11 @@ public class RummyBoard implements Serializable {
      * danh sách player ngồi xem
      */
     private final List<Player> viewPlayers = new ArrayList<>();
+
+    /**
+     * danh sach player win
+     */
+    private final List<Player> winPlayers = new ArrayList<>();
 
     /**
      * danh sach bài bốc
@@ -141,12 +147,14 @@ public class RummyBoard implements Serializable {
     private int winnerId = 0;
 
     /**
-      *danh sach la bai ngua ma player tiep theo co the an
+     * danh sach la bai ngua ma player tiep theo co the an
      */
     private final List<Integer> cardTakeAble = new ArrayList<>();
 
     /**
-      *list bai da bi an cua all player
+     * list check la bai danh ra cua player ConstrainDiscard se luu cac thong
+     * tin cua la baidc danh ra luu cac thong tin neu la bai do dc boi player
+     * sau do
      */
     private final List<ConstrainDiscard> constrainDiscard = new ArrayList<>();
 
@@ -263,7 +271,7 @@ public class RummyBoard implements Serializable {
         synchronized (lock) {
             try {
                 if (table.getAttributeAccessor().getIntAttribute(TableLobbyAttribute.STATED) == 1) {
-                    LOGGER.error(new PlayerAction("ALLOW_JOIN", "", request.getPlayerId(), table.getId()));
+                    LOGGER.error(new PlayerAction("ALLOW_JOIN 1", "", request.getPlayerId(), table.getId()));
                     return new InterceptionResponse(false, -2);
                 }
                 // avaiable
@@ -272,7 +280,7 @@ public class RummyBoard implements Serializable {
                     UserGame ui = GameUtil.gson.fromJson(serviceContract.getUserInfoByPid(request.getPlayerId(), 0),
                             UserGame.class);
                     if (ui == null) {
-                        LOGGER.error(new PlayerAction("ALLOW_JOIN", "", request.getPlayerId(), table.getId()));
+                        LOGGER.error(new PlayerAction("ALLOW_JOIN 2", "", request.getPlayerId(), table.getId()));
                         return new InterceptionResponse(false, -4);
                     }
                     /// chua hieu tai sao lai quy dinh nhung con so 0 va 5
@@ -283,56 +291,56 @@ public class RummyBoard implements Serializable {
                         } else {
                             serviceContract.sendErrorMsg(request.getPlayerId(), "Bàn chưa mở khóa cấp 2.");
                         }
-                        LOGGER.error(new PlayerAction("ALLOW_JOIN", "", request.getPlayerId(), table.getId()));
+                        LOGGER.error(new PlayerAction("ALLOW_JOIN 3", "", request.getPlayerId(), table.getId()));
                         return new InterceptionResponse(false, -4);
                     }
                     if (table.getAttributeAccessor().getIntAttribute(TableLobbyAttribute.CHIP) <= 0) {
                         serviceContract.sendErrorMsg(request.getPlayerId(), GameUtil.strTableError);
-                        LOGGER.error(new PlayerAction("ALLOW_JOIN", "", request.getPlayerId(), table.getId()));
+                        LOGGER.error(new PlayerAction("ALLOW_JOIN 4", "", request.getPlayerId(), table.getId()));
                         return new InterceptionResponse(false, -4);
                     }
                     if (table.getAttributeAccessor().getIntAttribute(TableLobbyAttribute.MARK) <= 0) {
                         serviceContract.sendErrorMsg(request.getPlayerId(), GameUtil.strTableError);
-                        LOGGER.error(new PlayerAction("ALLOW_JOIN", "", request.getPlayerId(), table.getId()));
+                        LOGGER.error(new PlayerAction("ALLOW_JOIN 5", "", request.getPlayerId(), table.getId()));
                         return new InterceptionResponse(false, -4);
                     }
                     if (ui.getGameId() != table.getMetaData().getGameId()) {
                         serviceContract.sendErrorMsg(request.getPlayerId(), GameUtil.strNotGame);
-                        LOGGER.error(new PlayerAction("ALLOW_JOIN", "", request.getPlayerId(), table.getId()));
+                        LOGGER.error(new PlayerAction("ALLOW_JOIN 6", "", request.getPlayerId(), table.getId()));
                         return new InterceptionResponse(false, -4);
                     }
                     if (ui.getTableId() != 0 && ui.getTableId() != table.getId()) {
                         serviceContract.sendErrorMsg(request.getPlayerId(), GameUtil.strInGame);
-                        LOGGER.error(new PlayerAction("ALLOW_JOIN", "", request.getPlayerId(), table.getId()));
+                        LOGGER.error(new PlayerAction("ALLOW_JOIN 7", "", request.getPlayerId(), table.getId()));
                         return new InterceptionResponse(false, -4);
                     }
                     if (ui.getVIP() < table.getAttributeAccessor().getIntAttribute(TableLobbyAttribute.VIP)) {
                         serviceContract.sendErrorMsg(request.getPlayerId(), GameUtil.strUnderVip);
-                        LOGGER.error(new PlayerAction("ALLOW_JOIN", "", request.getPlayerId(), table.getId()));
+                        LOGGER.error(new PlayerAction("ALLOW_JOIN 8", "", request.getPlayerId(), table.getId()));
                         return new InterceptionResponse(false, -7); // Khong du cap Vip
                     }
                     if (ui.getAG() < table.getAttributeAccessor().getIntAttribute(TableLobbyAttribute.CHIP)) {// && this.Mark !=
                         // ActivatorImpl.FreeID) {
                         serviceContract.sendErrorMsg(request.getPlayerId(), GameUtil.strUnderChip);
 
-                        LOGGER.error(new PlayerAction("ALLOW_JOIN", "", request.getPlayerId(), table.getId()));
+                        LOGGER.error(new PlayerAction("ALLOW_JOIN 9", "", request.getPlayerId(), table.getId()));
                         return new InterceptionResponse(false, -8); // Khong du AG
                     }
                     for (int i = 0; i < viewPlayers.size(); i++) {
                         if (viewPlayers.get(i).getPid() == request.getPlayerId()) {
-                            LOGGER.error(new PlayerAction("ALLOW_JOIN", "", request.getPlayerId(), table.getId()));
+                            LOGGER.error(new PlayerAction("ALLOW_JOIN 10", "", request.getPlayerId(), table.getId()));
                             return new InterceptionResponse(false, -5);///kiem tra viewer co phai player ko
                         }
                     }
                 }
                 // get new
                 if (ownerId == 0 || table.getId() == 0) {
-                    LOGGER.error(new PlayerAction("ALLOW_JOIN", "", request.getPlayerId(), table.getId()));
+                    LOGGER.error(new PlayerAction("ALLOW_JOIN 11", "", request.getPlayerId(), table.getId()));
                     return new InterceptionResponse(false, -2);
                 }
             } catch (ClassCastException | JsonSyntaxException ex) {
-                // ex.printStackTrace();
-                LOGGER.error(new PlayerAction("ALLOW_JOIN", "", request.getPlayerId(), table.getId()));
+                // ex.printStackTrace(); 
+                LOGGER.error(new PlayerAction("ALLOW_JOIN 12", "", request.getPlayerId(), table.getId()));
                 return new InterceptionResponse(false, -2);
             }
             return new InterceptionResponse(true, 0);
@@ -476,7 +484,7 @@ public class RummyBoard implements Serializable {
                                     table.getAttributeAccessor().setDateAttribute(TableLobbyAttribute.COUNTDOWN_START, new Date());
                                 }
                             } else if (players.size() > MIN_PLAYER) {
-                                ///???? khi co nguoi choi thứ 3 trở lên join bàn thì lấy ra thời gian đã set ở trên (câu if trên)
+                                ///???? khi co nguoi choi thứ 3 trở lên join bàn thì lấy ra thời gian đã set ở trên
                                 /// va tiếp tục đếm ngược thời gian đó
                                 AttributeValue oldTime = table.getAttributeAccessor().getAttribute(TableLobbyAttribute.COUNTDOWN_START);
                                 long secondsCheck = (new Date()).getTime() / 1000
@@ -532,9 +540,11 @@ public class RummyBoard implements Serializable {
 
     private List<UUID> BotTask = new ArrayList<>();
 
+    /**
+     * timeout de goi so luong bot tuong ung
+     */
     public void startTimeOutGetBot(Table table) {
         try {
-            LOGGER.info("==>Remi==>Get bot mark: " + this.mark + " - size players = " + players.size() + " - gamestatus = " + gameStatus);
 
             if (mark > 20000) {
                 return;
@@ -554,7 +564,7 @@ public class RummyBoard implements Serializable {
                 if (p.getUsertype() > 10) {
                     countBot++;
                 } else {
-                    /// so luong nguoi cho da co
+                    /// so luong nguoi choi da co
                     countUser++;
                 }
                 if (p.getVIP() == 0 && p.getUsertype() < 10) {
@@ -589,6 +599,7 @@ public class RummyBoard implements Serializable {
                 table.getScheduler().cancelScheduledAction(id); /// huy bo thoi gian chờ cua BotTask
             }
             BotTask.clear();
+
             for (int i = 0; i < numBot; i++) {
                 getOneBot(table);///action dc set Evt = "getbot"
                 ///them vao BotTask mot obj
@@ -613,6 +624,7 @@ public class RummyBoard implements Serializable {
             GameObjectAction action = new GameObjectAction(table.getId());
             action.setAttachment(local);
             BotTask.add(table.getScheduler().scheduleAction(action, 1000 + (GameUtil.random.nextInt(3000))));
+
         } catch (Exception ex) {
             LOGGER.error(ex.getMessage(), ex);
         }
@@ -639,6 +651,10 @@ public class RummyBoard implements Serializable {
         }
     }
 
+    /**
+     * kiem tra dieu kien co bot: ko disconnect tong tien AG nho hon muc quy
+     * dinh de tao ban
+     */
     public void removeBotIfExist(Table table, ServiceContract serviceContract) {
         synchronized (lock) {
             try {
@@ -646,6 +662,7 @@ public class RummyBoard implements Serializable {
                     if (players.get(i).getUsertype() > 10 && !players.get(i).isDisconnect()
                             && players.get(i).getAG() < Config.getBoundGold(this.mark)) {
                         boolean isLeft = false;
+                        ///ban nho nhat (mark = 10) co tren 2 nguoi choi
                         if (this.mark == Config.LIST_MARK_CREATE_TABLES.get(0).getMark() && players.size() > 2) {
                             if (GameUtil.random.nextInt(3) == 0) { ///25%
                                 isLeft = true;
@@ -792,10 +809,14 @@ public class RummyBoard implements Serializable {
         }
     }
 
+    /**
+     *
+     */
     public void readyTable(Table table, int pid) {
         synchronized (lock) {
             try {
                 for (int i = 0; i < players.size(); i++) {
+                    ///neu player chua ready
                     if ((players.get(i).getPid() == pid) && !players.get(i).isIsStart()) {
                         players.get(i).setIsStart(true);
 
@@ -850,10 +871,10 @@ public class RummyBoard implements Serializable {
     public void playerLeft(Table table, int playerId, ServiceContract serviceContract) {
         synchronized (lock) {
 
-            LOGGER.info("tableId: " + table.getId() + " player: " + playerId);
-
             try {
                 if (gameStatus == GameStatus.WAIT_FOR_START) {
+//                   LeaveAction la = new LeaveAction(playerId, table.getId());
+//                        table.getScheduler().scheduleAction(la, 0);
                     serviceContract.PlayerLeaveTable(playerId);
 
                     if (players.size() < MIN_PLAYER) {
@@ -863,7 +884,8 @@ public class RummyBoard implements Serializable {
                         EvtNamePacket packet = new EvtNamePacket(EVT.CLIENT_LEFT, String.valueOf(table.getId()));
                         table.getNotifier().notifyAllPlayers(GameUtil.toDataAction(playerId, table.getId(),
                                 packet));
-                        LOGGER.info(new PlayerAction(EVT.CLIENT_LEFT, "", 0, table.getId(), packet));
+                        LOGGER.info("Player size 1: " + players.size());
+                        LOGGER.info(new PlayerAction(EVT.CLIENT_LEFT, "", playerId, table.getId(), packet));
 
                         table.getScheduler().cancelAllScheduledActions();
 
@@ -875,7 +897,8 @@ public class RummyBoard implements Serializable {
                                 EvtNamePacket packet = new EvtNamePacket(EVT.CLIENT_LEFT, players.get(i).getUsername());
                                 table.getNotifier().notifyAllPlayers(GameUtil.toDataAction(playerId, table.getId(),
                                         packet));
-                                LOGGER.info(new PlayerAction(EVT.CLIENT_LEFT, "", 0, table.getId(), packet));
+                                LOGGER.info("Player size 2: " + players.size());
+                                LOGGER.info(new PlayerAction(EVT.CLIENT_LEFT, "", playerId, table.getId(), packet));
                                 players.remove(i);
 
                                 break;
@@ -891,7 +914,7 @@ public class RummyBoard implements Serializable {
                                 EvtNamePacket packet = new EvtNamePacket(EVT.CLIENT_CHANGE_OWNER, players.get(0).getUsername());
                                 table.getNotifier().notifyAllPlayers(GameUtil.toDataAction(playerId, table.getId(),
                                         packet));
-                                LOGGER.info(new PlayerAction(EVT.CLIENT_CHANGE_OWNER, "", 0, table.getId(), packet));
+                                LOGGER.info(new PlayerAction(EVT.CLIENT_CHANGE_OWNER, "", ownerId, table.getId(), packet));
                                 players.get(0).setIsStart(true);
                             }
 ///cho viewer dau tien vao ban choi
@@ -945,7 +968,7 @@ public class RummyBoard implements Serializable {
                                  */
                                 GameObjectAction goa = genGameObjectAction(EVT.OBJECT_FOLD_CARD, players.get(i).getPid(), table.getId(), TurnStatus.NULL);
                                 table.getScheduler().scheduleAction(goa, 0);
-                                /// neu chua den luot
+                                ///
                             } else if (players.get(i).isActive()) {
                                 players.get(i).setActive(false);/// 
                                 /// 
@@ -1075,8 +1098,8 @@ public class RummyBoard implements Serializable {
 
                 //send to all player
                 for (Player player : players) {
-                    int[] arr = new int[player.getArrCard().size()];///13 14
-                    for (int j = 0; j < arr.length; j++) {
+                    int[] arr = new int[player.getArrCard().size()];///13
+                    for (int j = 0; j < player.getArrCard().size(); j++) {
                         arr[j] = player.getArrCard().get(j).getI();/// la ra gia tri
                     }
                     /// gui cho player thong tin bo bai cua minh. 
@@ -1110,7 +1133,23 @@ public class RummyBoard implements Serializable {
 
     private void reset(Table table) {
 /// random luot ai dau tien
-        currTurn = GameUtil.random.nextInt(players.size());
+        ///currTurn = GameUtil.random.nextInt(players.size());
+//        if (currTurn == -1) {
+//            currTurn = 0;/// chu ban danh dau tien   
+//        }
+
+        currTurn = 0;
+
+        for (int i = 0; i < winPlayers.size(); i++) {
+            // check player win de lay turn danh bai
+            for (int j = 0; j < players.size(); j++) {
+                if(winPlayers.get(i).getPid() == players.get(j).getPid()){
+                    currTurn = j;
+                    break;
+                }
+            }
+        }
+        
 
         //logIFRSPlayers.clear();
         listCardDeck.clear();
@@ -1208,6 +1247,7 @@ public class RummyBoard implements Serializable {
     private int getNumCard() {
         return 13;
     }
+///
 
     private void startTimeoutAction(TurnStatus turnStatus, Table table, TimeAction timeAction, int turn) {
         Player player = players.get(turn);
@@ -1224,7 +1264,7 @@ public class RummyBoard implements Serializable {
                 GameObjectAction goa = genGameObjectAction(EVT.OBJECT_TURN_DISCONNECT, player.getPid(), table.getId(), turnStatus);
                 table.getScheduler().scheduleAction(goa, TimeAction.DISCONNECT_ACTION.getValue());
             } else {
-                startTimeout(table, player.getPid(), timeAction.getValue(), turnStatus);/// time action de take card = 11s
+                startTimeout(table, player.getPid(), timeAction.getValue(), turnStatus);/// time action
                 /// goi ve handle cua GOA va goi playTimeout() trong nay         
             }
         } else {
@@ -1241,26 +1281,31 @@ public class RummyBoard implements Serializable {
         }
         ///trc khi start thi dung het cac time out khac
         stopTimeout(table, pid);
+        Player player = getPlayerById(pid);
+
         TableScheduler tableScheduler = table.getScheduler();
 
         LocalEvt local = new LocalEvt();
         local.setEvt(EVT.OBJECT_TIMEOUT);/// playTimeout()
         local.setTurnStatus(turnStatus);
         ///????
-
+        local.setCardId(0);
         if (turnStatus == TurnStatus.BOT_TAKE_CARD_PLACE) {
-            local.setCardId(cardId[0]);///cardId[0] là card mà BOT có thể ăn
+            local.setCardId(cardId[0]);///cardId[0] là card mà BOT ăn
+            LOGGER.info("====>startTimeout for BOT_TAKE_CARD: time: " + timeout + " - card: " + cardId[0]);
         } else {
-            local.setCardId(0);
+            if (turnStatus == TurnStatus.BOT_NOTIDECLARE) {
+                local.setCardId(cardId[0]);///cardId[0] là card mà BOT ăn
+                player.setTurnStatus(turnStatus);
+                LOGGER.info("====>startTimeout for BOT_NOTI_DECLARE: time: " + timeout + " - card: " + cardId[0]);
+            }
         }
         local.setPid(pid);
-
         GameObjectAction action = new GameObjectAction(table.getId());
         action.setAttachment(local);
 
         UUID id = tableScheduler.scheduleAction(action, timeout);/// time out = time action = 11s
 
-        Player player = getPlayerById(pid);
         player.setTimeoutActionId(id);
     }
 
@@ -1268,7 +1313,7 @@ public class RummyBoard implements Serializable {
     /*
         * startTimeoutAction() trong startTimeOut()
      **/
-    public void takeCardDeck(Table table, int playerId, boolean b) {///1. b = true;
+    public void takeCardDeck(Table table, int playerId, boolean b) {///1. b = truecheck xem la server tu dong boc bai; = false: client boc bai;
         synchronized (lock) {
             try {
                 if (gameStatus != GameStatus.STARTED) {
@@ -1287,24 +1332,21 @@ public class RummyBoard implements Serializable {
                 if (player.isFirstTakeDeck()) {
                     player.setFirstTakeDeck(false);
                 }
-/// chi dc lay bai khi so la bai <13 va con bai tren ban
+/// chi dc lay bai khi so la bai <=13 va con bai tren ban
                 if (player.getArrCard().size() <= getNumCard() && listCardDeck.size() > 0) {
                     int index = listCardDeck.size() - 1;
                     ///???????? RemiCardU?????????????
-
+                    /// la bai dc chon de cho BOT u
                     RemiCardU objU = new RemiCardU();
                     if (player.getUsertype() > 10) {/// neu la BOT
                         //BOT HANDLE
                         /// lay ra la bai co chủ đích
                         /*
                             * getNumberStraightRequired = 5 - so luong nguoi choi
-                            *
-                        
-                        
-                        
+                            *                   
                          */
                         index = CheckCard.GetCardToAdd(player.getArrCard(), player.getUsername(), listCardDeck,
-                                this.mark, true, player.getVIP(), objU, getNumberStraightRequired());
+                                this.mark, true, player.getVIP(), objU);
                     } else {
                         index = 0;  //CheckCard.GetCardToAdd(player.getArrCard(), player.getUsername(), listCardDeck,
                         //this.mark, false, player.getVIP(), objU, getNumberStraightRequired());
@@ -1314,7 +1356,7 @@ public class RummyBoard implements Serializable {
                     listCardDeck.remove(index);
                     player.getArrCard().add(c);/// them vao bo bai cho nguoi choi
 
-                    /// set so lan lấy bài auto lien tiếp cua nguoi choi
+                    /// neu la player boc bai
                     if (!b) {
                         player.setNumberAuto(0);
                     }
@@ -1341,10 +1383,16 @@ public class RummyBoard implements Serializable {
                     LOGGER.info(new PlayerAction(EVT.CLIENT_TAKE_CARD_DECK, player.getUsername(), playerId, table.getId(), card));
                     //Check la Bot thi cho U
                     if (player.getUsertype() > 10) { //BOT HANDLE ==> Noti DECLARE
-                        LOGGER.info("==>Bot Declare:");///
-                        LOGGER.info("==>Bot Declare ==> CardRemove:" + objU.getiCard());
-                        if (objU.getiCard() > 0) { //Co kha nang ù ==> Noti Declare
+                        List<Card> listCard = player.getArrCard();
+                        List<Integer> is = new ArrayList<>();
+
+                        if (objU.getiCard() > 0 && CheckCard.checkDeclare(listCard, getNumberStraightRequired())) { //Co kha nang ù ==> Noti Declare
+                            ///kiem tra so sanh? co thoai man hay ko
+
+                            LOGGER.info("==>Bot Declare ==> CardRemove:" + objU.getiCard());
+
                             startTimeout(table, playerId, TimeAction.BOT_PROCESS.getValue(), TurnStatus.BOT_NOTIDECLARE, objU.getiCard());
+
                         } else { //Danh bai binh thuong
                             startTimeoutAction(TurnStatus.DISCARD, table, TimeAction.BOT_PROCESS, currTurn);
                         }
@@ -1412,7 +1460,12 @@ public class RummyBoard implements Serializable {
         }
     }
 
-    /// danh bai
+    /**
+     * đánh bài
+     *
+     * @param playerId : player danh bai
+     * @param cards []: ds card danh ra - co the la 2 la giong y het nhau
+     */
     public void disCard(Table table, int playerId, int[] cards, boolean b) {
         synchronized (lock) {
             try {
@@ -1437,29 +1490,41 @@ public class RummyBoard implements Serializable {
                         return;
                     }
                 }
-                if (player.getUsertype() > 10) {//BOT Remove Card
-//                    LOGGER.info("==>BOT Start RemoveCard:" + player.getUsername());
-//                    cardId = CheckCard.GetCardToRemove(player.getArrCard(), player.getUsername(), player.getCardPlaceId());
-//                    LOGGER.info("==>BOT RemoveCard:" + player.getUsername() + "-" + cardId);
+//                if (player.getUsertype() > 10) {//BOT Remove Card
+////                    LOGGER.info("==>BOT Start RemoveCard:" + player.getUsername());
+////                    cardId = CheckCard.GetCardToRemove(player.getArrCard(), player.getUsername(), player.getCardPlaceId());
+////                    LOGGER.info("==>BOT RemoveCard:" + player.getUsername() + "-" + cardId);
+//
+//                }
+
+                if (player.getArrCard().size() != 14) {
+                    return;
                 }
 
                 if (cards == null) {
+
                     int n = player.getArrCard().size() - 1;
+                    int cardId = player.getArrCard().get(n).getI();
+                    //boolean checkDiscardAble = Chec
                     cards = new int[1];
-                    while (n >= 0) {
-                        int cardId = player.getArrCard().get(n).getI();
-                        /// check cardId co the danh ra ko
+                    if (player.getUsertype() > 10) {
+                        LOGGER.info("==>BOT Start RemoveCard:" + player.getUsername());
+                        cards[0] = CheckCard.checkCardToDis(player.getArrCard(), constrainDiscard, playerId, players.get(getNextTurn()).getUserid());
+                    } else {
+                        LOGGER.info("==>Client Start RemoveCard:" + player.getUsername());
                         if (checkDiscardAble(cardId, playerId, players.get(getNextTurn()).getUserid())) {
-                            n = -1;
                             cards[0] = cardId;
                         } else {
-                            n = n - 1;
+                            cards[0] = CheckCard.checkCardToDis(player.getArrCard(), constrainDiscard, playerId, players.get(getNextTurn()).getUserid());
                         }
                     }
-                }
 
+                }
+                /// neu card dc chon de danh ra ko thoa man
                 if (!checkDiscardAble(cards[0], playerId, players.get(getNextTurn()).getUserid())) {
+                    //if (CheckCard.checkDiscardAble(cards[0], playerId, players.get(getNextTurn()).getUserid(), constrainDiscard)) {
                     Packet packet = new Packet(EVT.CLIENT_ACTION_ERROR, GameUtil.DIS_CARD_JUST_TAKE_PLACE);
+                    LOGGER.info("===>Check discard Able: " + GameUtil.DIS_CARD_JUST_TAKE_PLACE);
                     table.getNotifier().notifyPlayer(playerId, GameUtil.toDataAction(playerId, table.getId(), packet));
                     return;
                 }
@@ -1481,10 +1546,14 @@ public class RummyBoard implements Serializable {
 
                     player.getArrCard().removeAll(l);
                     listCardPlace.addAll(l);/// them vao danh sach bai danh ra
+
                     addCardTakeAble(cards[0]);///danh sach la bai ngua ma player tiep theo co the an
+
+                    Card cardLog = new Card(cards[0]);
+                    LOGGER.info("====> Discard: " + cardLog.toString());
                 }
 
-                if (!b) {
+                if (!b) {/// player choi that
                     player.setNumberAuto(0);
                 }
                 LOGGER.info(new PlayerAction("DISCARD",
@@ -1493,14 +1562,14 @@ public class RummyBoard implements Serializable {
                 /// la bai da duoc danh ra
                 if (cardValid) {
                     player.setTurnStatus(TurnStatus.TAKECARD);/// set turn take card cho vong tiep theo
-                    int nextTurn = getNextTurn();///getNextTurn tra ve turn cua nguoi tiep theo
+                    int nextTurn = getNextTurn();///getNextTurn tra ve turn cua nguoi tiep theo isActivity
 
                     ///?????
                     addConstrainDiscard(cards[0], playerId, TurnStatus.DISCARD);
 
                     stopTimeout(table, playerId);
                     ///
-                    boolean fn = checkFinish(table, nextTurn);
+                    boolean fn = checkFinish(table, nextTurn);/// kiem tra ket thuc van
 
                     Discard card = new Discard(player.getUsername(), EVT.CLIENT_DISCARD, cards, players.get(nextTurn).getUsername());
                     if (fn) {
@@ -1538,7 +1607,7 @@ public class RummyBoard implements Serializable {
         LOGGER.info(constrainDiscard);
 
         if (ts == TurnStatus.DISCARD) {
-            /// neu list ko rong, va ko co ai an la bai nay
+            ///check trong list constrainDiscard neu ko co ai an la bai thi remove no di
             if (!constrainDiscard.isEmpty() && constrainDiscard.get(constrainDiscard.size() - 1).getPlayerTakecard() == 0) {
                 constrainDiscard.remove(constrainDiscard.size() - 1);/// loai ra khoi list
             }
@@ -1547,13 +1616,15 @@ public class RummyBoard implements Serializable {
             while (i.hasNext()) {
                 ConstrainDiscard s = i.next();
 
-                if (!s.isJustTakePlace()) {/// check đánh cây bài vừa ăn
-                    s.setJustTakePlace(true);
+                if (!s.isJustTakePlace()) {///check xem la bai nay da dc danh ra chua
+                    s.setJustTakePlace(true);/// cay bai nay chua dc an
                 }
-                /// kiem tra nhung la da dc an xem player da danh ra la bai nay bh chua
+                /// kiem tra trung so
+                /// nguoi an la bai đánh ra lá có cùng số
+                /// để cho người chơi ở phía trc đươc đánh lá này trong những vòng sau
                 if (new Card(s.getCardId()).getN() == new Card(cardId).getN() && s.getPlayerTakecard() == playerId) {
                     if (s.isRequired()) {//
-                        s.setRequired(false);/// player da tung an la bai
+                        s.setRequired(false);/// lá bài cùng số đã được player ăn nó đánh ra
                     }
                 }
 
@@ -1562,14 +1633,17 @@ public class RummyBoard implements Serializable {
             constrainDiscard.add(new ConstrainDiscard(cardId, playerId, 0));
 
             LOGGER.info(constrainDiscard);
-
+///TAKE_CARD
+///playerID an con cardId
         } else {
-
+            if (constrainDiscard.size() == 0) {
+                constrainDiscard.add(new ConstrainDiscard(cardId, 0, 0));
+            }
             ConstrainDiscard cd = constrainDiscard.get(constrainDiscard.size() - 1);
 
             if (cd.getCardId() == cardId) {
-                cd.setPlayerTakecard(playerId);
-                cd.setJustTakePlace(false);
+                cd.setPlayerTakecard(playerId);/// set player an quan bai
+                cd.setJustTakePlace(false);/// set quan bai nay vua dc an
             }
 
             LOGGER.info(constrainDiscard);
@@ -1578,12 +1652,12 @@ public class RummyBoard implements Serializable {
     }
 
     /**
-     * check cây bài có được đánh ra hay không
+     * check cây bài có được đánh ra hay không condition:
      *
      * @param cardId
      * @param playerId
      * @param next
-     * @return
+     * @return false: card ko thoa man
      */
     private boolean checkDiscardAble(int cardId, int playerId, int next) {
 
@@ -1596,6 +1670,11 @@ public class RummyBoard implements Serializable {
             }
 
             //check đánh cây bài có số trùng với cây bài trước đó đã đánh cho người kia ăn.
+            ///check trong list ConstrainDiscard xem co quan bai trung so vs cardId
+            ///&& la day co phai do playerId da tung danh ra hay ko
+            ///&& la day co phai do nguoi kia da an hay ko
+            ///&& la day da dc next danh ra chua
+            ///isRequired() = true : nguoi an chua danh la bai do ra
             if (cd.getPlayerTakecard() == next && cd.getPlayerDiscard() == playerId && new Card(cardId).getN() == new Card(cd.getCardId()).getN() && cd.isRequired()) {
                 return false;
             }
@@ -1617,6 +1696,10 @@ public class RummyBoard implements Serializable {
         return nextPlayer;
     }
 
+    /**
+     * Kiem tra xem co ket thuc van ko Ko tim dc nguoi choi tiep theo - players
+     * da not_activity ListCardDeck = 0
+     */
     private boolean checkFinish(Table table, int nextTurn) {
         //finish game
 //            GameObjectAction goa = genGameObjectAction(EVT.OBJECT_FINISH, 0, table.getId(), TurnStatus.DECLARE);
@@ -1632,6 +1715,7 @@ public class RummyBoard implements Serializable {
 
     }
 ///
+
     private void noticeDeclareSuccess(Table table) {
         if (winnerId != 0) {
             Player winnerPlayer = getPlayerById(winnerId);
@@ -1685,31 +1769,33 @@ public class RummyBoard implements Serializable {
                 if (!cardTakeAble.contains(cardId)) {
                     return;
                 }
-
+/// chi dc an toi da 3 cay
                 if (player.getNumTake() >= 3) {
                     return;
                 }
 
-                if (player.isFirstTakeDeck()) {
+                if (player.isFirstTakeDeck()) {/// check player boc bai dau tien
                     player.setFirstTakeDeck(false);
                 }
-
+/// tang so quan da an cua player
                 player.setNumTake(player.getNumTake() + 1);
 
                 Card card = new Card(cardId);
                 if (!b) {
                     player.setNumberAuto(0);
                 }
+/// sau khi an thi phai danh bai
+/// trong discard phai kiem tra xem player co the declare ko
                 player.setTurnStatus(TurnStatus.DISCARD);
 
                 stopTimeout(table, playerId);
-
+///them la bai da an vao list card
                 player.getArrCard().add(card);
-
+///them vao list card dc an
                 addConstrainDiscard(cardId, playerId, TurnStatus.TAKECARD);
-
+///remove khoi list card danh ra
                 listCardPlace.remove(listCardPlace.size() - 1);
-
+/// remove khoi list card ma player co the an
                 removeCardTakeAble(cardId);
 
                 LOGGER.info(new PlayerAction("TAKE_CARD_PLACE", player.getUsername(), player.getUserid(), table.getId(),
@@ -1719,7 +1805,8 @@ public class RummyBoard implements Serializable {
                 table.getNotifier().notifyAllPlayers(GameUtil.toDataAction(playerId, table.getId(),
                         playCard));
                 LOGGER.info(new PlayerAction(EVT.CLIENT_TAKE_CARD_PLACE, "", 0, table.getId(), playCard));
-
+                LOGGER.info("=====>Process An Card: " + card.toString());
+///check declare
                 if (player.getArrCard().size() == getNumCard()) {
 
                     ConfirmDeclare packet = new ConfirmDeclare();
@@ -1743,6 +1830,13 @@ public class RummyBoard implements Serializable {
         }
     }
 
+    /**
+     * Thong bao Declare
+     *
+     * @param table
+     * @param playerId
+     * @param cardId la ket thuc
+     */
     public void notiDeclare(Table table, int playerId, int cardId) {
         synchronized (lock) {
             try {
@@ -1751,26 +1845,29 @@ public class RummyBoard implements Serializable {
                 }
 
                 Player player = players.get(currTurn);
-
                 if (playerId != player.getUserid()) {
+
                     return;
                 }
 
-                if (player.getTurnStatus() != TurnStatus.DISCARD && player.getTurnStatus() != TurnStatus.CONFIRM_DECLARE) {
+                if (player.getTurnStatus() != TurnStatus.BOT_NOTIDECLARE && player.getTurnStatus() != TurnStatus.DISCARD && player.getTurnStatus() != TurnStatus.CONFIRM_DECLARE) {
                     return;
                 }
 
                 table.getScheduler().cancelAllScheduledActions();
                 boolean cardValid = false;
                 player.setNumberAuto(0);
-
+                ///day du cac bo
                 if (cardId == -1 && player.getTurnStatus() == TurnStatus.CONFIRM_DECLARE) {
                     cardValid = true;
                 } else {
+                    ///la le ko dc danh ra
                     if (!checkDiscardAble(cardId, playerId, players.get(getNextTurn()).getUserid())) {
+                        //if (CheckCard.checkDiscardAble(cardId, playerId, players.get(getNextTurn()).getUserid(), constrainDiscard)) {
+                        startTimeoutAction(TurnStatus.DISCARD, table, TimeAction.BOT_PROCESS, currTurn);
                         return;
                     }
-
+                    /// check la le? dc danh ra
                     for (Card card : player.getArrCard()) {
                         if (card.getI() == cardId) {
                             cardValid = true;
@@ -1815,6 +1912,9 @@ public class RummyBoard implements Serializable {
         }
     }
 
+    /**
+     * huy bo xac nhan Declare
+     */
     public void cancelConfirmDeclare(Table table, int playerId) {
         synchronized (lock) {
 
@@ -1856,10 +1956,14 @@ public class RummyBoard implements Serializable {
             }
         }
     }
-/*
-    *cong bo
-    **/
-    public void declare(Table table, int playerId, List<List<Integer>> lsphom, boolean auto) {
+
+    /**
+     * Cong bo
+     *
+     * @param lsphom list phom do player tu dong sap xep
+     * @param auto check la player hay bot
+     */
+    public void declare(Table table, int playerId, List<List<Integer>> lsphom, boolean auto, ServiceContract serviceContract) {
         synchronized (lock) {
 
             try {
@@ -1880,6 +1984,7 @@ public class RummyBoard implements Serializable {
                 if (!player.isActive()) {
                     return;
                 }
+                ///lsphom = null danh cho BOT
                 if (lsphom == null || !CheckCard.valid(lsphom, player.getArrCard())) {
                     try {
                         List<Integer> is = new ArrayList<>();
@@ -1887,15 +1992,15 @@ public class RummyBoard implements Serializable {
                             is.add(card.getI());
                         }
 
-                        lsphom = CheckCard.group(is, getNumberStraightRequired());/// tu dong sap xep phom
+                        lsphom = CheckCard.group(is);/// tu dong sap xep phom
                     } catch (Exception e) {
                         LOGGER.error(e.getMessage(), e);
                     }
 
                 }
+                ///check ko chua 2 la da an ms tao thanh 1 phom
 
                 player.getListGroup().addAll(lsphom);
-//                
 
                 stopTimeout(table, playerId);
 
@@ -1903,33 +2008,46 @@ public class RummyBoard implements Serializable {
 
                 LOGGER.info(new PlayerAction("DECLARE", player.getUsername(), player.getUserid(), table.getId(),
                         player.getDisplayCard(), lsphom));
-
+///winner da notiDeclare
                 if (winnerId == playerId) {
                     boolean check = true;
-
+///chua co du bo thoa man
                     for (List<Integer> list : lsphom) {
-                        if (!CheckCard.checkGroup(list)) {
+                        ///check group va list ko dc chua 2 cards da dc an
+                        if (!CheckCard.checkGroup(list) || !CheckCard.checkCardTakePlaceInGroup(list, constrainDiscard, playerId)) {
+//                        if (!CheckCard.checkGroup(list)) {
+
                             check = false;
                             break;
                         }
+//                       
                     }
 
                     if (check) {
                         //finish game
                         noticeDeclareSuccess(table);
+
+                        /// declare that bai                      
                     } else {
                         player.setActive(false);
                         player.setFund(0);
                         winnerId = 0;
 
                         int nexturn = getNextTurn();
-
+                        /// neu chua ket thuc game thi tiep tuc choi
                         if (!checkFinish(table, nexturn)) {
                             BlindTrans objSend = new BlindTrans(EVT.CLIENT_FOLD_CARD, player.getUsername(), players.get(nexturn).getUsername());
-                            objSend.setAgLose(FUND);
+
+                            long agLose = (FUND - player.getFund()) * this.mark;
+                            if (agLose > player.getAG()) {
+                                agLose = player.getAG();
+                            }
+                            objSend.setAgLose(agLose);
+                            long totalAG = player.getAG() - agLose;
+                            objSend.setTotalAG(totalAG);
+                            ///?setActivity
                             table.getNotifier().notifyAllPlayers(GameUtil.toDataAction(playerId, table.getId(), objSend));
                             LOGGER.info(new PlayerAction(EVT.CLIENT_FOLD_CARD, "", 0, table.getId(), objSend));
-
                             gameStatus = GameStatus.STARTED;
                             currTurn = nexturn;
                             startTimeoutAction(TurnStatus.TAKECARD, table, TimeAction.TAKE_CARD, currTurn);
@@ -1941,7 +2059,7 @@ public class RummyBoard implements Serializable {
                             int uactive = 0;
 
                             int playerWin = 0;
-
+                            /// tim player active
                             for (Player pl : players) {
                                 if (pl.isActive()) {
                                     uactive++;
@@ -1949,6 +2067,7 @@ public class RummyBoard implements Serializable {
                                 }
 
                             }
+                            ///neu chi con 1 nguoi thi nguoi do se chien thang
                             if (uactive == 1) {
                                 gameStatus = GameStatus.FINISHED;
                                 winnerId = playerWin;
@@ -1963,6 +2082,7 @@ public class RummyBoard implements Serializable {
                         }
 
                     }
+                    /// khi tat ca cac player declare thi chuyen sang finish game
                 } else {
 
                     Packet packet = new Packet(EVT.CLIENT_DECLARED, player.getUsername());
@@ -1990,6 +2110,9 @@ public class RummyBoard implements Serializable {
     }
 
 //    @Deprecated
+    /**
+     * up bai
+     */
     public void foldCard(Table table, int playerId, boolean auto) {
 
         synchronized (lock) {
@@ -2016,25 +2139,28 @@ public class RummyBoard implements Serializable {
                 } else {
                     player.setFund(player.getFund() - LOSE_SECOND);
                 }
-
+///ko dc tiep tuc choi
                 player.setActive(false);
 
                 int nexturn = getNextTurn();
 
                 if (!checkFinish(table, nexturn)) {
                     BlindTrans objSend = new BlindTrans(EVT.CLIENT_FOLD_CARD, player.getUsername(), players.get(nexturn).getUsername());
-
+                    /// tinh tien thua
                     long agLose = (FUND - player.getFund()) * this.mark;
                     if (agLose > player.getAG()) {
                         agLose = player.getAG();
                     }
                     objSend.setAgLose(agLose);
+                    long totalAG = player.getAG() - agLose;
+                    objSend.setTotalAG(totalAG);
                     table.getNotifier().notifyAllPlayers(GameUtil.toDataAction(playerId, table.getId(), objSend));
                     LOGGER.info(new PlayerAction(EVT.CLIENT_FOLD_CARD, "", 0, table.getId(), objSend));
-
+                    ///nhung nguoi con lai tiep tuc choi
                     currTurn = nexturn;
                     startTimeoutAction(TurnStatus.TAKECARD, table, TimeAction.TAKE_CARD, currTurn);
                 } else {
+                    ///ket thuc game
                     gameStatus = GameStatus.FINISHED;
                     winnerId = players.get(nexturn).getUserid();
 
@@ -2049,6 +2175,9 @@ public class RummyBoard implements Serializable {
 
     }
 
+    /**
+     *
+     */
     public void serviceUpAG(Table table, int playerId, long ag, ServiceContract serviceContract) {
         synchronized (lock) {
             boolean t = false;
@@ -2131,6 +2260,13 @@ public class RummyBoard implements Serializable {
         }
     }
 
+    /**
+     * playerId kick username
+     *
+     * @param username
+     * @param playerId
+     * @return id cua player cua username
+     */
     public int kickTable(String username, int playerId) {
         synchronized (lock) {
             try {
@@ -2155,11 +2291,15 @@ public class RummyBoard implements Serializable {
 
     public void autoExit(Table table, int playerId) {
         synchronized (lock) {
+            LOGGER.info("====>Auto Exit");
             try {
+                ///game dang choi thi luu trang thai exit
+                ///ket thuc game thi tu dong thoat
                 if (gameStatus != GameStatus.WAIT_FOR_START) {
 
                     for (Player player : players) {
                         if (player.getPid() == playerId) {
+
                             player.setAutoexit(!player.isAutoexit());
                             AutoExit autoExit = new AutoExit(EVT.CLIENT_AUTO_EXIT, player.isAutoexit());
                             table.getNotifier().notifyPlayer(playerId, GameUtil.toDataAction(playerId, table.getId(),
@@ -2168,7 +2308,7 @@ public class RummyBoard implements Serializable {
                             break;
                         }
                     }
-
+///neu la viewer thi cho exit bat cu luc nao
                     for (Player player : viewPlayers) {
                         if (player.getPid() == playerId) {
 
@@ -2178,9 +2318,7 @@ public class RummyBoard implements Serializable {
                         }
                     }
                 } else {
-                    Player player = getPlayerById(playerId);
-                    if (player != null) {
-                    }
+                    ///chay vao playerLeft()f
                     LeaveAction la = new LeaveAction(playerId, table.getId());
                     table.getScheduler().scheduleAction(la, 0);
                 }
@@ -2208,26 +2346,28 @@ public class RummyBoard implements Serializable {
         }
     }
 
+    /**
+     * Bo tien :v
+     */
     public void tipDealer(Table table, int playerId, ServiceContract serviceContract) {
         synchronized (lock) {
             try {
 
                 for (int i = 0; i < players.size(); i++) {
+                    ///Kiem tra so tien bo
                     if (players.get(i).getPid() == playerId) {
-                        if (((gameStatus != GameStatus.WAIT_FOR_START) && players.get(i).getAG() - (80 * this.mark) <= 2 * this.mark)
-                                || ((gameStatus == GameStatus.WAIT_FOR_START) && players.get(i).getAG() < 3 * this.mark)) {
+                        if (((gameStatus != GameStatus.WAIT_FOR_START) && players.get(i).getAG() - (80 * this.mark) <= this.mark)
+                                || ((gameStatus == GameStatus.WAIT_FOR_START) && players.get(i).getAG() < 2 * this.mark)) {
 
                             Packet packet = new Packet(EVT.CLIENT_TIP_DEALER, GameUtil.strTipNotEnoughAG_TH);
                             table.getNotifier().notifyPlayer(playerId, GameUtil.toDataAction(playerId, table.getId(),
                                     packet));
                             LOGGER.info(new PlayerAction(EVT.CLIENT_TIP_DEALER, players.get(i).getUsername(), playerId, table.getId(), packet));
                             return;
+                            ///neu du tien
                         } else {
-                            players.get(i).setAG(serviceContract.UpdateMarkChessById(players.get(i).getUserid(),
-                                    -2 * this.mark, table.getMetaData().getGameId(), this.mark));
-                            players.get(i).setAG(players.get(i).getAG() - 2 * this.mark);
-
-                            TipSend send = new TipSend(EVT.CLIENT_TIP_DEALER, 2 * this.mark, players.get(i).getUsername());
+                            players.get(i).setAG(updateMarkPlayer(table.getId(), players.get(i), serviceContract, (long) (-this.mark)));
+                            TipSend send = new TipSend(EVT.CLIENT_TIP_DEALER, this.mark, players.get(i).getUsername());
                             table.getNotifier().notifyAllPlayers(GameUtil.toDataAction(playerId, table.getId(),
                                     send));
                             LOGGER.info(new PlayerAction(EVT.CLIENT_TIP_DEALER, "", 0, table.getId(), send));
@@ -2242,6 +2382,9 @@ public class RummyBoard implements Serializable {
         }
     }
 
+    /**
+     *
+     */
     public void autoReadyTable(Table table) {
         synchronized (lock) {
             try {
@@ -2257,6 +2400,7 @@ public class RummyBoard implements Serializable {
     public void playerDisconnected(Table table, int playerId) {
         synchronized (lock) {
             try {
+                ///cho thoat
                 if (gameStatus == GameStatus.WAIT_FOR_START) {
                     LeaveAction la = new LeaveAction(playerId, table.getId());
                     table.getScheduler().scheduleAction(la, 0);
@@ -2289,20 +2433,23 @@ public class RummyBoard implements Serializable {
         }
     }
 
+    /**
+     * BOT danh
+     */
     public void botShot(Table table, int pid, boolean b, ServiceContract serviceContract, TurnStatus turnStatus) {
         try {
             LOGGER.info("==>Remmi table " + table.getId() + " pid " + pid + " Bot Process:" + turnStatus);
             if (turnStatus == TurnStatus.TAKECARD) {
                 if (players.size() > 0) {
                     for (int a = 0; a < players.size(); a++) {
-                        LOGGER.info("==>Remi table " + table.getId() + " pid " + pid + " Bot Process: Find player " + players.get(a).getPid());
                         if (players.get(a).getPid() == pid) {
                             boolean check = false;
                             if (cardTakeAble.size() > 0) {
                                 for (int i = 0; i < cardTakeAble.size(); i++) {
                                     Integer cardId = cardTakeAble.get(i);
                                     Card cardAn = new Card(cardId);
-                                    if (CheckCard.IsTakeCard(players.get(a).getArrCard(), cardAn, this.mark)) { // An quan bai
+                                    ///check luon ko cho an de ghep thanh 1 phom gom 2 quan an dc
+                                    if (players.get(a).getNumTake() < 3 && CheckCard.IsTakeCard(players.get(a).getArrCard(), cardAn, this.mark, constrainDiscard, pid)) { // An quan bai
                                         /// de ghep thanh 1 phom hoac tạo ra 1 cạ 2 lá
                                         check = true;
                                         LOGGER.info("==>Remmi table " + table.getId() + " pid " + pid + " Bot Process: An card " + cardAn.getI()); // Card
@@ -2335,7 +2482,6 @@ public class RummyBoard implements Serializable {
     }
 
     public void finishGame(Table table, ServiceContract serviceContract) {
-        LOGGER.info(new PlayerAction("FINISH_GAME", "", 0, table.getId()));
         synchronized (lock) {
             try {
                 if (gameStatus != GameStatus.FINISHED) {
@@ -2350,9 +2496,13 @@ public class RummyBoard implements Serializable {
 
                 table.getScheduler().cancelAllScheduledActions();
                 List<PlayFinishTrans> result = new ArrayList<>();
+                //int turnWinner;
+                for (int j = 0; j < players.size(); j++) {
+                    Player player = players.get(j);
 
-                for (Player player : players) {
                     if (player.getUserid() == winnerId) {
+//                        currTurn = j;
+                        winPlayers.add(player);
                         continue;
                     }
                     if (!player.isActive()) {
@@ -2363,19 +2513,23 @@ public class RummyBoard implements Serializable {
 //                        player.setFund(0);
 //                        continue;
 //                    }
+                    ///chua du so sanh? theo yeu cau
                     if (CheckCard.countStraight(player.getListGroup()) < getNumberStraightRequired()) {
                         for (List<Integer> is : player.getListGroup()) {
                             for (Integer i : is) {
                                 Card c = new Card(i);
                                 if (!c.isJocker()) {
+                                    ///Tinhs diem tat ca cac con ko phai la jocker
                                     player.setFund(player.getFund() - c.calc());
                                 }
                             }
                         }
+                        /// co du so sanh
                     } else {
                         for (List<Integer> is : player.getListGroup()) {
-
-                            if (!CheckCard.checkGroup(is)) {
+                            ///neu is ko tao thanh phom thi tinh diem
+                            if (!CheckCard.checkGroup(is) || !CheckCard.checkCardTakePlaceInGroup(is, constrainDiscard, player.getPid())) {
+//                            if (!CheckCard.checkGroup(is)) {
                                 for (Integer i : is) {
                                     Card c = new Card(i);
                                     if (!c.isJocker()) {
@@ -2390,7 +2544,9 @@ public class RummyBoard implements Serializable {
                         player.setFund(0);
                     }
                 }
-
+/// score = 80 - diem cac la bai le?
+/// player co score cang cao thi diem cang nho?
+/// tim ra nguoi co so diem nho nhat
                 int max = Collections.max(players, new Comparator<Player>() {
                     @Override
                     public int compare(Player o1, Player o2) {
@@ -2399,7 +2555,6 @@ public class RummyBoard implements Serializable {
 
                 }).getFund();
 
-                int win = 0;
                 long winGold = 0;
 
                 int cWin = 0;//so nguoi thang cuoc
@@ -2407,25 +2562,30 @@ public class RummyBoard implements Serializable {
                     if (player.getFund() == max) {
                         cWin++;
                     } else {
+                        /// tinh diem = diem so cua cac la bai le?
                         int score = max - player.getFund();
                         long goldResult = score * this.mark;
                         if (goldResult > player.getAG()) {
                             goldResult = player.getAG();
-                        }
 
+                        }
+                        winGold += goldResult;
                         player.setScore(-score);
                         player.setGoldResult(-goldResult);
-                        win += score;
-                        winGold += goldResult;
+
                     }
 
                 }
-
+                /// ko co winner thi winner la nguoi co so diem max
                 if (winnerId == 0) {
+                    ///chia tien cho nhung nguoi co diem cao nhat
+                    for (int k = 0; k < players.size(); k++) {
+                        Player player = players.get(k);
 
-                    for (Player player : players) {
                         if (player.getFund() == max) {
-                            player.setScore(win);
+                            //currTurn = k;
+                            winPlayers.add(player);
+                            player.setScore(FUND - max);
                             player.setGoldResult(winGold / cWin);
                         }
 
@@ -2433,16 +2593,19 @@ public class RummyBoard implements Serializable {
 
                 } else {
                     Player playerWin = getPlayerById(winnerId);
-                    playerWin.setScore(win);
+                    playerWin.setScore(FUND - max);
                     playerWin.setGoldResult(winGold);
                 }
-
+                ///tinh %
                 for (Player player : players) {
+                    ///goldResult = score*mark
+                    ///neu la nguoi thang cuoc thi goldAdd = tinh theo % vip
+                    /// neu thua mat so tien theo so diem
                     long goldAdd = player.getGoldResult() >= 0
                             ? Hesovip(player.getGoldResult(), player.getVIP())
                             : player.getGoldResult();
-                    player.setAG(serviceContract.UpdateMarkChessById(player.getUserid(), goldAdd,
-                            table.getMetaData().getGameId(), this.mark));
+                    player.setAG(updateMarkPlayer(table.getId(), player, serviceContract, goldAdd));
+                    //updateMarkPlayer(table.getId(), player, serviceContract, goldAdd);
 
                     PlayFinishTrans pft = new PlayFinishTrans();
                     pft.setN(player.getUsername());
@@ -2452,7 +2615,7 @@ public class RummyBoard implements Serializable {
 
                     //win do thang khca declare lao. 
                     List<Integer> l = new ArrayList<>();
-                    if (player.getListGroup().isEmpty()) {
+                    if (player.getListGroup().isEmpty()) {/// ko co phom nao
                         for (Card card : player.getArrCard()) {
                             l.add(card.getI());
                         }
@@ -2491,6 +2654,9 @@ public class RummyBoard implements Serializable {
         }
     }
 
+    /**
+     * Bat dau 1 van voi
+     */
     private void restartGame(Table table, ServiceContract serviceContract) {
         try {
             for (Player player : players) {
@@ -2498,6 +2664,7 @@ public class RummyBoard implements Serializable {
                 if (player.getUsertype() < 10
                         && serviceContract.CheckPromotion(player.getAG(), player.getVIP(), player.getSource())
                         && !player.isDisconnect()) {
+                    ///kiem tra tien duoc server tang cho player
                     Long agTang = serviceContract.PromotionByUid(player.getUserid(), false);
                     if (agTang > 0) {
                         player.setAG(player.getAG() + agTang);
@@ -2529,9 +2696,9 @@ public class RummyBoard implements Serializable {
                     table.getScheduler().scheduleAction(la, 500);
                     bool = false;
                 } else {
-
+                    /// lay ra so tien toi thieu de vao ban choi
                     long boundMoney = Config.getBoundGold(this.mark);
-
+                    ///neu player ko du tien choi thi kick ra
                     if (player.getAG() < boundMoney) {
                         LOGGER.info("player finish leave het tien: " + player.getUsername());
                         serviceContract.sendErrorMsg(player.getPid(), GameUtil.strKick_Err3_TH);
@@ -2547,6 +2714,7 @@ public class RummyBoard implements Serializable {
             }
 
             //table.getNotifier().notifyAllPlayers(GameUtil.toDataAction(0, table.getId(), new Packet("uag", GameUtil.gson.toJson(lsP))));
+            ///neu co player out thi cho viewer dau tien vao ban
             if (bool) {
                 for (int i = players.size(); i < MAX_PLAYER; i++) {
                     if (viewPlayers.size() > 0) {
@@ -2581,6 +2749,8 @@ public class RummyBoard implements Serializable {
                 players.clear();
                 table.getAttributeAccessor().setIntAttribute(TableLobbyAttribute.STATED, 1);
             } else {
+                ///remove BOT ra khoi ban
+                ///lay them BOT moi
                 removeBotIfExist(table, serviceContract);
                 table.getAttributeAccessor().setIntAttribute(TableLobbyAttribute.START_GAME, 0);
                 table.getAttributeAccessor().setIntAttribute(TableLobbyAttribute.STATED, 0);
@@ -2596,7 +2766,7 @@ public class RummyBoard implements Serializable {
 
             GameObjectAction goa = new GameObjectAction(table.getId());
             LocalEvt le = new LocalEvt();
-            le.setEvt(EVT.OBJECT_AUTO_START);
+            le.setEvt(EVT.OBJECT_AUTO_START);///server tu dong start van moi
             le.setPid(players.get(0).getPid());
             goa.setAttachment(le);
 
@@ -2645,6 +2815,9 @@ public class RummyBoard implements Serializable {
         }
     }
 
+    /**
+     * mark*%vip
+     */
     private long Hesovip(long mark, int vip) {
         switch (vip) {
             case 10:
@@ -2671,7 +2844,7 @@ public class RummyBoard implements Serializable {
     /*
     *    
      */
-    public void playTimeout(Table table, int playerId, TurnStatus turnStatus, int cardId) {
+    public void playTimeout(Table table, int playerId, TurnStatus turnStatus, int cardId, ServiceContract serviceContract) {
         synchronized (lock) {
             try {
                 /// kiem tra trang thai turn ma player lua chon
@@ -2684,7 +2857,7 @@ public class RummyBoard implements Serializable {
                             disCard(table, playerId, null, true);
                             break;
                         case DECLARE:
-                            declare(table, playerId, null, true);
+                            declare(table, playerId, null, true, serviceContract);
                             break;
 
                         case CONFIRM_DECLARE:
@@ -2714,8 +2887,24 @@ public class RummyBoard implements Serializable {
         serviceContract.confirmSelectRoom_Only(playerId, roomId, tableId, mark);
     }
 
+    /**
+     * @return so luong sanh? tuong ung vs so player
+     */
     private int getNumberStraightRequired() {
         return 5 - players.size();
+    }
+
+    public Long updateMarkPlayer(int tableId, Player player, ServiceContract serviceContract, Long agAdd) {
+        if (player.getUsertype() > 10) {
+            //bot handle
+
+            return serviceContract.UpdateBotMark(player.getPid(), agAdd, GAMEID);
+        } else {
+            long currGold = serviceContract.UpdateMarkChessById(player.getPid(), agAdd, GAMEID);
+            //LOG_IFRS.info(String.format("%d#%d#%d#%d#%d#%d#%d#%b", player.getUserid(), currGold, GAMEID, tableId, mark, agAdd, System.currentTimeMillis(), inMatch));
+            return currGold;
+        }
+
     }
 
 }

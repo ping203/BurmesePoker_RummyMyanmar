@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<game-definition id="8807">
+<game-definition id="8819">
 	<name>RummyMyanmar</name>
 	<classname>net.myanmar.rummy.GameImpl</classname>
         <activator>net.myanmar.rummy.ActivatorImpl</activator>

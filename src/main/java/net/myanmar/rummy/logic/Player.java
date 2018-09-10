@@ -672,7 +672,10 @@ public class Player implements Serializable {
 //    public void setCardPlaceId(int cardPlaceId) {
 //        this.cardPlaceId = cardPlaceId;
 //    }
-
+/**
+ * @return > 0 neu nguoi do thang tien ban - 
+ * @return  nho hon 0 neu nguoi do thua tien ban
+ */
     public long getGoldResult() {
         return goldResult;
     }
@@ -688,6 +691,8 @@ public class Player implements Serializable {
         listGroup.clear();
         turnStatus = TurnStatus.NULL;
         ArrCard.clear();
+        Autoexit = false;
+        Disconnect = false;
         Active = true;
 //        cardPlaceId = 0;
         idTimeout = null;

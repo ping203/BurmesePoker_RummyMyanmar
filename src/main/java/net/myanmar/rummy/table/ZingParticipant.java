@@ -29,7 +29,7 @@ import org.apache.log4j.Logger;
  */
 public class ZingParticipant implements RequestCreationParticipant {
 
-    private static final Logger LOGGER = Logger.getLogger(ZingParticipant.class);
+    private static final Logger LOGGER = Logger.getLogger("RUMMY_ZingParticipant");
     
     //private final Game game;
     //private final BacayBoard board;
@@ -48,6 +48,7 @@ public class ZingParticipant implements RequestCreationParticipant {
     @Override
     public void tableCreated(Table table, LobbyTableAttributeAccessor acc) {
         try {
+            LOGGER.info("Create table: " + table.toString());
             RummyBoard board = new RummyBoard();
             board.setBoard(this.pid, this.atts, activatorContext, table);
             Player opnew = new Player(uinfo);

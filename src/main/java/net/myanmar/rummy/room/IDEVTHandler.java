@@ -23,48 +23,50 @@ import org.apache.log4j.Logger;
  * @author hoangchau
  */
 public class IDEVTHandler {
-
+    
     private final static Logger LOGGER = Logger.getLogger(IDEVTHandler.class);
     public static final int GET_LIST_TABLE = 600;
-
+    
     private static final String DOS_SELECT_ROOM_RULE = "selectRoomSpam";
-
+    
     private final ActivatorContext context;
-
+    
     private static IDEVTHandler _instance;
-
+    
     private final DosProtector dos;
-
+    
     public static IDEVTHandler getInstance(ActivatorContext context) {
         if (_instance == null) {
             _instance = new IDEVTHandler(context);
         }
         return _instance;
     }
-
+    
     private IDEVTHandler(ActivatorContext context) {
         this.context = context;
         dos = this.context.getServices().getServiceInstance(DosProtector.class);
         dos.config(DOS_SELECT_ROOM_RULE, new FrequencyRule(1, 1000));
     }
-
+    
     public void process(JsonObject jo) {
         try {
             JsonObject jsonObject = jo.get("idevtdata").getAsJsonObject();
+            LOGGER.info("IDEVT: " + (jsonObject.get("idevt").getAsInt()));
+            LOGGER.info("idEvtData: " + jo.get("idevtdata").getAsJsonObject());
             switch (jsonObject.get("idevt").getAsInt()) {
-
+                
                 case GET_LIST_TABLE:
-
+                    
                     int userId = jsonObject.get("pid").getAsInt();
                     if (dos.allow(DOS_SELECT_ROOM_RULE, userId)) {
                         getListTable(jo.get("idevtdata").getAsJsonObject());
-                    }else{
+                    } else {
                         ServiceContract contract = context.getServices().getServiceInstance(ServiceContract.class);
                         contract.sendErrorMsg(userId, GameUtil.SELECT_ROOM_TOO_FAST);
                     }
-
+                    
                     break;
-
+              
                 default:
                     break;
             }
@@ -72,7 +74,7 @@ public class IDEVTHandler {
             LOGGER.error(e.getMessage(), e);
         }
     }
-
+    
     private void getListTable(JsonObject jo) {
         try {
             int roomid = jo.get("RoomID").getAsInt();
@@ -80,11 +82,10 @@ public class IDEVTHandler {
                 roomid = 4;
             }
             ArrayList<TableInRoom> lsReturn = new ArrayList<>();
-
+            
             LobbyTable[] tables = context.getTableFactory().listTables();
             for (short i = 0; i < tables.length; i++) {
                 LobbyTable table = tables[i];
-                
                 
                 long mark = (long) table.getAttributes().get(TableLobbyAttribute.MARK).getIntValue();
                 if (checkTableInRoom(roomid, mark)) {
@@ -98,7 +99,7 @@ public class IDEVTHandler {
                             (short) seat, (short) capacity));
                 }
             }
-
+            
             JsonObject json = new JsonObject();
             json.addProperty("idevt", jo.get("idevt").getAsInt());
             json.addProperty("pid", jo.get("pid").getAsInt());
@@ -113,22 +114,22 @@ public class IDEVTHandler {
             LOGGER.error(e.getMessage(), e);
         }
     }
-
+    
     private boolean checkTableInRoom(int roomid, long mark) {
         try {
             switch (roomid) {
                 case 1:
-                    if(mark < 5000){
+                    if (mark < 5000) {
                         return true;
                     }
                     break;
                 case 2:
-                    if(mark < 50000){
+                    if (mark < 50000) {
                         return true;
                     }
                     break;
                 case 3:
-                    if(mark < 500000){
+                    if (mark < 500000) {
                         return true;
                     }
                     break;

@@ -13,7 +13,7 @@ public class ConstrainDiscard {
     private int cardId;
     private int playerDiscard;
     private int playerTakecard;
-    private boolean  justTakePlace = true;
+    private boolean  justTakePlace = true;///card vua an
     private boolean required = true;
 
     public ConstrainDiscard(int cardId, int playerDiscard, int playerTakecard) {
@@ -69,7 +69,7 @@ public class ConstrainDiscard {
     
     @Override
     public String toString() {
-        return String.format("{cardId:%d,playerDiscard:%d,playerTakecard:%d,discardAble:%b}", cardId, playerDiscard, playerTakecard, justTakePlace);
+        return String.format("{cardId:%d,playerDiscard:%d,playerTakecard:%d,discardAble:%b, required:%b}", cardId, playerDiscard, playerTakecard, justTakePlace,required);
     }
     
    

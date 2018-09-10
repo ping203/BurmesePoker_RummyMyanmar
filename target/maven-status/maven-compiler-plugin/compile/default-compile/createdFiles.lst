@@ -7,10 +7,12 @@ net/myanmar/rummy/logic/SortCardAscWithAceIsOne.class
 net/myanmar/rummy/vo/ObjectRoom.class
 net/myanmar/rummy/logic/MarkCreateTableTran.class
 net/myanmar/rummy/logic/ComparerCardASC.class
+net/myanmar/rummy/logic/CheckCard$9.class
 net/myanmar/rummy/logic/CheckCard$5.class
 net/myanmar/rummy/GameImpl.class
 net/myanmar/rummy/log/LogIFRSPlayer.class
 net/myanmar/rummy/Processor.class
+net/myanmar/rummy/logic/CheckCard$10.class
 net/myanmar/rummy/room/IDEVTHandler.class
 net/myanmar/rummy/logic/TableVInfo.class
 net/myanmar/rummy/utils/GameUtil.class
@@ -29,6 +31,7 @@ net/myanmar/rummy/logic/TableInfo.class
 net/myanmar/rummy/vo/TableIdle.class
 net/myanmar/rummy/vo/LogTableNew.class
 net/myanmar/rummy/event/ServiceEVT.class
+net/myanmar/rummy/logic/CheckCard$11.class
 net/myanmar/rummy/ActivatorImpl$CheckTable.class
 net/myanmar/rummy/logic/SearchTable$1.class
 net/myanmar/rummy/logic/ItemVPlayer.class
@@ -62,6 +65,7 @@ net/myanmar/rummy/ActivatorImpl.class
 net/myanmar/rummy/logic/CheckCard$1.class
 net/myanmar/rummy/logic/PlayCard.class
 net/myanmar/rummy/table/ZingTableListener.class
+net/myanmar/rummy/logic/CheckCard$8.class
 net/myanmar/rummy/logic/votransfer/Packet.class
 net/myanmar/rummy/log/PlayerAction.class
 net/myanmar/rummy/vo/TableToPlayer.class
