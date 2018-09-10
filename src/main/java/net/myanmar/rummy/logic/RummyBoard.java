@@ -1143,13 +1143,12 @@ public class RummyBoard implements Serializable {
         for (int i = 0; i < winPlayers.size(); i++) {
             // check player win de lay turn danh bai
             for (int j = 0; j < players.size(); j++) {
-                if(winPlayers.get(i).getPid() == players.get(j).getPid()){
+                if (winPlayers.get(i).getPid() == players.get(j).getPid()) {
                     currTurn = j;
                     break;
                 }
             }
         }
-        
 
         //logIFRSPlayers.clear();
         listCardDeck.clear();
@@ -2015,10 +2014,10 @@ public class RummyBoard implements Serializable {
                     for (List<Integer> list : lsphom) {
                         ///check group va list ko dc chua 2 cards da dc an
                         if (!CheckCard.checkGroup(list) || !CheckCard.checkCardTakePlaceInGroup(list, constrainDiscard, playerId)) {
-//                        if (!CheckCard.checkGroup(list)) {
 
                             check = false;
                             break;
+
                         }
 //                       
                     }
@@ -2318,7 +2317,7 @@ public class RummyBoard implements Serializable {
                         }
                     }
                 } else {
-                    ///chay vao playerLeft()f
+                    ///chay vao playerLeft()
                     LeaveAction la = new LeaveAction(playerId, table.getId());
                     table.getScheduler().scheduleAction(la, 0);
                 }

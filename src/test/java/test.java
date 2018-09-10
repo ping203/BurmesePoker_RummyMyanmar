@@ -1070,21 +1070,23 @@ public class test {
         //42 4♥,5 6♠,44 6♥,7 8♠,10 J♠,10 J♠,49 J♥,37 Q♦,38 K♦,51 K♥,39 A♦,52 A♥,60 JKB,36 J♦]
         //2 3♠,7 8♠,8 9♠,22 10♣,35 10♦,48 10♥,48 10♥,24 Q♣,25 K♣,13 A♠,26 A♣,60 JKB,9 10♠
         //27 2♦,40 2♥,28 3♦,3 4♠,16 4♣,7 8♠,8 9♠,9 10♠,10 J♠,37 Q♦,37 Q♦,50 Q♥,52 A♥,17 5♣]
-        listTmp.add(27);
-        listTmp.add(40);
-        listTmp.add(28);
+        //46 8♥,6 7♠,44 6♥,60 JKB,43 5♥,4 5♠,37 Q♦,61 JKR,38 K♦,5 6♠,3 4♠,16 4♣,3 4♠
+        //[5,4,6],[60,43,44,46],[38,61,37],[3,16,3]
+        listTmp.add(46);
+        listTmp.add(6);
+        listTmp.add(44);
+        listTmp.add(60);
+        listTmp.add(43);
+        listTmp.add(4);
+        //listTmp.add(33);
+        listTmp.add(37);
+        listTmp.add(61);
+        listTmp.add(38);
+        listTmp.add(5);
         listTmp.add(3);
         listTmp.add(16);
-        listTmp.add(7);
-        //listTmp.add(33);
-        listTmp.add(8);
-        listTmp.add(9);
-        listTmp.add(10);
-        listTmp.add(37);
-        listTmp.add(37);
-        listTmp.add(50);
-        listTmp.add(52);
-       listTmp.add(17);
+        listTmp.add(3);
+       //listTmp.add(17);
 //        listTmp.add(36);
 //        listTmp.add(24);
 
@@ -1109,6 +1111,14 @@ public class test {
         }
 
         System.out.println("=====================================");
+        
+        List<ConstrainDiscard> constrainDiscard = new ArrayList<>();
+        ConstrainDiscard cd1 = new ConstrainDiscard(20, 100004361, 100001084);
+        ConstrainDiscard cd2 = new ConstrainDiscard(5, 100001084, 100004361);
+        ConstrainDiscard cd3 = new ConstrainDiscard(3, 100001084, 100004361);
+        constrainDiscard.add(cd1);
+        constrainDiscard.add(cd2);
+        constrainDiscard.add(cd3);
         List<Card> listCardCheck = new ArrayList<>();
         for (int i = 0; i < listTmp.size(); i++) {
             Card card = new Card(listTmp.get(i));
@@ -1172,6 +1182,12 @@ public class test {
             List<Integer> lst = group.get(i);
             List<Card> listCard = new ArrayList<>();
             System.out.println("Phom: ");
+            boolean checkGroup = CheckCard.checkGroup(lst);
+            boolean checkValiGroup = CheckCard.checkCardTakePlaceInGroup(lst, constrainDiscard,100004361);
+            System.out.println("Check group: " + checkGroup + " ---- " + checkValiGroup);
+            if (!CheckCard.checkGroup(lst)|| !CheckCard.checkCardTakePlaceInGroup(lst, constrainDiscard,100004361)) {
+                System.out.println("1111111111111111111111111");
+            }
             Collections.sort(lst, new Comparator<Integer>() {
                 @Override
                 public int compare(Integer o1, Integer o2) {

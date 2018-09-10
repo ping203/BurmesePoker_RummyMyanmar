@@ -1452,15 +1452,20 @@ public class CheckCard {
      */
     public static boolean checkCardTakePlaceInGroup(List<Integer> listCard, List<ConstrainDiscard> constrainDiscard, int playerId) {
         int countCard = 0;
+        List<ConstrainDiscard> tmp = new ArrayList<>(constrainDiscard);
+       
         for (int i = 0; i < listCard.size(); i++) {
-            for (int j = 0; j < constrainDiscard.size(); j++) {
-                if (constrainDiscard.get(j).getPlayerTakecard() == playerId
-                        && constrainDiscard.get(j).getCardId() == listCard.get(i)) {
+            for (int j = 0; j < tmp.size(); j++) {
+                if (tmp.get(j).getPlayerTakecard() == playerId
+                        && tmp.get(j).getCardId() == listCard.get(i)) {
                     countCard++;
+                    tmp.remove(j);
+                    
                 }
             }
 
         }
+        
         if (countCard > 1) {
             return false;
         }
