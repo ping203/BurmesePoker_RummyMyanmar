@@ -6,6 +6,7 @@
 package net.myanmar.rummy;
 
 import com.athena.services.api.ServiceContract;
+import com.athena.services.utils.GAMEID;
 
 import net.myanmar.rummy.vo.LogPlayer;
 import net.myanmar.rummy.vo.LogTable;
@@ -19,6 +20,7 @@ import com.cubeia.firebase.api.game.activator.GameActivator;
 import com.cubeia.firebase.api.game.activator.RequestAwareActivator;
 import com.cubeia.firebase.api.game.activator.RequestCreationParticipant;
 import com.cubeia.firebase.api.game.lobby.LobbyTable;
+import com.cubeia.firebase.api.game.lobby.LobbyTableFilter;
 import com.cubeia.firebase.api.routing.ActivatorAction;
 import com.cubeia.firebase.api.routing.RoutableActivator;
 import com.cubeia.firebase.api.server.SystemException;
@@ -29,7 +31,10 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import java.sql.Date;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -47,6 +52,7 @@ import net.myanmar.rummy.room.IDEVTHandler;
 import net.myanmar.rummy.table.ZingParticipant;
 import net.myanmar.rummy.table.attribute.TableLobbyAttribute;
 import net.myanmar.rummy.utils.GameUtil;
+import net.myanmar.rummy.vo.BotCreateTable;
 import net.myanmar.rummy.vo.MarkCreateTable;
 import org.apache.log4j.Logger;
 
@@ -62,10 +68,14 @@ public class ActivatorImpl implements GameActivator, RequestAwareActivator, Rout
     private final Object threadLock = new Object();
     private ScheduledExecutorService scheduler;
     private ScheduledFuture<?> future;
+    private List<ScheduledFuture<?>> bctSchedule = new ArrayList<>();
 
     ServerConfigProviderContract configProviderContract;
 
     private static final List<LogTable> ListLogTable = new ArrayList<LogTable>();
+
+    private static long peopleInRoomCheck = 0l;
+    //public static ServiceContract serviceContract;
 
     public static void addLogTable(LogTable log) {
         synchronized (ListLogTable) {
@@ -121,16 +131,16 @@ public class ActivatorImpl implements GameActivator, RequestAwareActivator, Rout
             throw new CreationRequestDeniedException(2);
         }
         if (ui.getTableId() != 0) {
-            LOGGER.info("===>RequestCreationParticipant 2");
+            
             throw new CreationRequestDeniedException(3);
         }
         if (attributes.length < 1) {
-            //LOGGER.info("===>RequestCreationParticipant 3");
+            
             throw new CreationRequestDeniedException(4);
         }
 
         if (seats <= 0 || seats > RummyBoard.MAX_PLAYER) {
-            //LOGGER.info("===>RequestCreationParticipant 4");
+           
             throw new CreationRequestDeniedException(10);
         }
 
@@ -279,7 +289,7 @@ public class ActivatorImpl implements GameActivator, RequestAwareActivator, Rout
                                 pushUserToTable(playerId, tableId);
 //                            serviceContract.AutoJoinTable(playerId, tableId, context.getGameId());
                             } else {
-                                LOGGER.info("====>Search table create table");                             
+                                LOGGER.info("====>Search table create table");
                                 createTable(ui, markMin);
                             }
                         }
@@ -316,7 +326,7 @@ public class ActivatorImpl implements GameActivator, RequestAwareActivator, Rout
                         }
 
                         if (goldBound4 == 0 || ui.getAG() < goldBound4) {
-                            
+
                         } else {
                             createTable(ui, markCreate4);
                         }
@@ -410,8 +420,14 @@ public class ActivatorImpl implements GameActivator, RequestAwareActivator, Rout
     private void startThreading() {
         synchronized (threadLock) {
             stopThreading();
-            future = scheduler.scheduleWithFixedDelay(new CheckTable(), 10, 5, TimeUnit.SECONDS);
 
+            future = scheduler.scheduleWithFixedDelay(new CheckTable(), 10, 5, TimeUnit.SECONDS);
+            for (int i = Config.BOT_CREATE_TABLE.size() - 1; i >= 0; i--) {
+                int idcase = Config.BOT_CREATE_TABLE.get(i).getIDCase();
+                int mark = Config.LIST_MARK_CREATE_TABLES.get(i).getMark();
+                int timeOut = Config.BOT_CREATE_TABLE.get(i).getTimeCheck();
+                bctSchedule.add(scheduler.scheduleWithFixedDelay(new callBotCreateTable(idcase, mark), 0, timeOut, TimeUnit.SECONDS));
+            }
             Thread threadLog = new Thread(new WriteLog(), "ThreadLog");
             threadLog.setDaemon(true);
             threadLog.start();
@@ -423,6 +439,13 @@ public class ActivatorImpl implements GameActivator, RequestAwareActivator, Rout
         synchronized (threadLock) {
             if (future == null) {
                 return; // SANITY CHECK
+            }
+            for (ScheduledFuture<?> sf : bctSchedule) {
+                if (sf == null) {
+                    return;
+                }
+                sf.cancel(true);
+                sf = null;
             }
             future.cancel(true);
             future = null;
@@ -441,6 +464,86 @@ public class ActivatorImpl implements GameActivator, RequestAwareActivator, Rout
         }
     }
 
+    private class callBotCreateTable implements Runnable {
+
+        private int idcase;
+        //private int tableCount;
+        private int mark;
+
+        public callBotCreateTable(int idcase, int mark) {
+            this.idcase = idcase;
+            //this.tableCount = context.getTableFactory().listTables().length;
+            this.mark = mark;
+        }
+
+        @Override
+        public void run() {
+            try {
+                botCreateTable(idcase, mark);
+            } catch (Exception ex) {
+                LOGGER.error(ex.getMessage(), ex);
+            }
+        }
+    }
+
+    private void botCreateTable(int idcase, int mark) {
+        BotCreateTable bct = Config.BOT_CREATE_TABLE.get(idcase - 1);
+        int tableCap = bct.getTableMin() + (new Random().nextInt(bct.getTableMax() - bct.getTableMin() + 1));
+        int tableCount = getTableCountByMark(context, mark);
+
+        if (tableCount >= tableCap) {
+            return;
+        } else {
+            int tableToAdd = bct.getTableToAddMin() + (new Random().nextInt(bct.getTableToAddMax() - bct.getTableToAddMin() + 1));
+            if (tableToAdd == 0) {
+                return;
+            } else {
+                for (int i = 0; i < tableToAdd; i++) {
+                    getServiceContract().BotCreateTable(context.getGameId(), mark);
+                    //DEBUG.info("BotCreateTable:" + mark + ";" + tableToAdd);
+                }
+            }
+        }
+    }
+
+    private static int getTableCountByMark(ActivatorContext context, int mark) {
+        try {
+
+            LobbyTable[] lobbyTables = context.getTableFactory().listTables(new FilterLobby(mark));
+
+            return lobbyTables.length;
+        } catch (JsonSyntaxException e) {
+            LOGGER.error(e.getMessage(), e);
+
+        }
+        return 0;
+    }
+
+    private static class FilterLobby implements LobbyTableFilter {
+
+        private final int mark;
+
+        public FilterLobby(int mark) {
+            this.mark = mark;
+        }
+
+        @Override
+        public boolean accept(Map<String, AttributeValue> map) {
+            for (Map.Entry<String, AttributeValue> entry : map.entrySet()) {
+                String key = entry.getKey();
+                AttributeValue value = entry.getValue();
+
+                if (key.equals(TableLobbyAttribute.MARK)) {
+                    if (value.getIntValue() != mark) {
+                        return false;
+                    }
+                }
+
+            }
+            return true;
+        }
+    }
+
     private class CheckTable implements Runnable {
 
         @Override
@@ -450,6 +553,8 @@ public class ActivatorImpl implements GameActivator, RequestAwareActivator, Rout
                 destroyLongTimeTable();
 
                 destroyEmptyTable();
+
+                checkTables();
 
 //                writelog();
             } catch (Exception ex) {
@@ -556,4 +661,70 @@ public class ActivatorImpl implements GameActivator, RequestAwareActivator, Rout
         return context.getServices().getServiceInstance(ServiceContract.class);
     }
 
+    protected void checkTables() {
+        try {
+
+            // Check Get List Room
+            if ((new java.util.Date()).getTime() / 1000 - peopleInRoomCheck > 300) {
+                peopleInRoomCheck = (new java.util.Date()).getTime() / 1000;
+                // Cap nhat so nguoi trong tung Room.
+                for (int i = 0; i < Config.LIST_MARK_CREATE_TABLES.size() - 1; i++) {
+                    Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(getServiceContract().GetCurrentPlayerInMark(Config.LIST_MARK_CREATE_TABLES.get(i).getMark(), context.getGameId()));
+                    Calendar c = Calendar.getInstance();
+                    int iHours = c.get(Calendar.HOUR_OF_DAY);
+                    int iMinute = c.get(Calendar.MINUTE);
+                    if (((iHours == 11) && (iMinute >= 30)) || ((iHours == 13) && (iMinute <= 30)) || (iHours == 12) || (iHours == 21) || ((iHours == 20) && (iMinute >= 30)) || ((iHours == 22) && (iMinute <= 30))) {
+                        if (i == 0) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(300 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(100));
+                        } else if (i == 1) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(250 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(100));
+                        } else if (i == 2) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(100 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(100));
+                        } else if (i == 3) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(50 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(100));
+                        } else if (i == 4) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(20 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(50));
+                        } else if (i == 5) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(10 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(50));
+                        } else if (i == 6) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(5 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(20));
+                        } else if (i == 7) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(1 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(5));
+                        } else if (i == 8) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(1 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(5));
+                        } else if (i == 9) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(1 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(5));
+                        }
+                    } else {
+                        if (i == 0) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(200 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(100));
+                        } else if (i == 1) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(150 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(100));
+                        } else if (i == 2) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(100 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(100));
+                        } else if (i == 3) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(100 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(50));
+                        } else if (i == 4) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(50 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(50));
+                        } else if (i == 5) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(20 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(50));
+                        } else if (i == 6) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(5 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(20));
+                        } else if (i == 7) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(1 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(5));
+                        } else if (i == 8) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(1 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(5));
+                        } else if (i == 9) {
+                            Config.LIST_MARK_CREATE_TABLES.get(i).setCurrplay(1 + Config.LIST_MARK_CREATE_TABLES.get(i).getCurrplay() + (new Random()).nextInt(5));
+                        }
+                    }
+                }
+                for (int i = 0; i < Config.getRooms().size() - 1; i++) {
+                    Config.getRooms().get(i).setCurPlay(getServiceContract().GetCurrentPlayerInRoom(Config.getRooms().get(i).getId(), context.getGameId()));
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+    }
 }

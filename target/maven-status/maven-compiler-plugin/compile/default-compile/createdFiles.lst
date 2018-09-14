@@ -20,6 +20,7 @@ net/myanmar/rummy/logic/TimeAction.class
 net/myanmar/rummy/logic/CheckCard.class
 net/myanmar/rummy/logic/AutoExit.class
 net/myanmar/rummy/ActivatorImpl$WriteLog.class
+net/myanmar/rummy/ActivatorImpl$FilterLobby.class
 net/myanmar/rummy/logic/SearchTable$FilterLobby.class
 net/myanmar/rummy/vo/UserGame.class
 net/myanmar/rummy/logic/TipSend.class
@@ -32,6 +33,7 @@ net/myanmar/rummy/vo/TableIdle.class
 net/myanmar/rummy/vo/LogTableNew.class
 net/myanmar/rummy/event/ServiceEVT.class
 net/myanmar/rummy/logic/CheckCard$11.class
+net/myanmar/rummy/vo/BotCreateTable.class
 net/myanmar/rummy/ActivatorImpl$CheckTable.class
 net/myanmar/rummy/logic/SearchTable$1.class
 net/myanmar/rummy/logic/ItemVPlayer.class
@@ -73,6 +75,7 @@ net/myanmar/rummy/logic/votransfer/ConfirmDeclare.class
 net/myanmar/rummy/logic/ItemPlayer.class
 net/myanmar/rummy/table/ZingParticipant.class
 net/myanmar/rummy/config/Config.class
+net/myanmar/rummy/ActivatorImpl$callBotCreateTable.class
 net/myanmar/rummy/table/ZingTableInterceptor.class
 net/myanmar/rummy/logic/SortCardAsc.class
 net/myanmar/rummy/logic/RummyBoard$1.class

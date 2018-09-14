@@ -5,11 +5,13 @@ public class Card {
     private int S;
     private int N;
     private int I;
+    private boolean isTaked = false; /// true: card an duoc
     
     public Card() {
         this.S = 0;
         this.N = 0;
         this.I = 0;
+        this.isTaked = false;
     }
 
     public Card(int s, int n, int i) {
@@ -61,6 +63,16 @@ public class Card {
     public void setN(int n) {
         N = n;
     }
+
+    public boolean getIsTaked() {
+        return isTaked;
+    }
+
+    public void setIsTaked(boolean isTaked) {
+        this.isTaked = isTaked;
+    }
+    
+    
 
     public int calc() {
         

@@ -16,6 +16,7 @@ import java.util.List;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.myanmar.rummy.vo.BotCreateTable;
 
 /**
  *
@@ -38,26 +39,39 @@ public class Config {
 //                    //new MarkCreateTable(5000000, 100000000, 0)
 //            )
 //    );
-    
     public static final List<MarkCreateTable> LIST_MARK_CREATE_TABLES = new ArrayList<>(
             Arrays.asList(
-                    new MarkCreateTable(10      , 500,          500),
-                    new MarkCreateTable(100     , 10000,        20000),
-                    new MarkCreateTable(500     , 50000,        100000),
-                    new MarkCreateTable(5000    , 750000,       2000000),
-                    new MarkCreateTable(10000   , 2000000,      4000000),
-                    new MarkCreateTable(50000   , 10000000,     20000000),
-                    new MarkCreateTable(100000   , 20000000,      40000000),
-                    new MarkCreateTable(500000   , 100000000,     200000000),
-                    new MarkCreateTable(1000000   , 200000000,      400000000),
-                    new MarkCreateTable(5000000   , 1000000000,     2000000000)
+                    new MarkCreateTable(10, 500, 500),
+                    new MarkCreateTable(100, 10000, 20000),
+                    new MarkCreateTable(500, 50000, 100000),
+                    new MarkCreateTable(5000, 750000, 2000000),
+                    new MarkCreateTable(10000, 2000000, 4000000),
+                    new MarkCreateTable(50000, 10000000, 20000000),
+                    new MarkCreateTable(100000, 20000000, 40000000),
+                    new MarkCreateTable(500000, 100000000, 200000000),
+                    new MarkCreateTable(1000000, 200000000, 400000000),
+                    new MarkCreateTable(5000000, 1000000000, 2000000000)
             )
     );
-    
+
+    public static final List<BotCreateTable> BOT_CREATE_TABLE = new ArrayList<>(
+            Arrays.asList(
+                    new BotCreateTable(1, 1, 0, 11, 5, 10, 50, 1, 3),
+                    new BotCreateTable(1, 1, 11, 101, 5, 10, 50, 1, 3),
+                    new BotCreateTable(2, 1, 101, 501, 5, 10, 50, 1, 3),
+                    new BotCreateTable(3, 1, 501, 1001, 4, 8, 50, 1, 3),
+                    new BotCreateTable(5, 1, 5001, 10001, 2, 6, 120, 1, 2),
+                    new BotCreateTable(6, 1, 10001, 50001, 1, 5, 180, 1, 2),
+                    new BotCreateTable(7, 1, 50001, 100001, 1, 4, 240, 1, 2),
+                    new BotCreateTable(8, 1, 100001, 500001, 0, 1, 420, 0, 1),
+                    new BotCreateTable(9, 1, 500001, 1000001, 0, 1, 600, 0, 1)
+            )
+    );
+
     public static int getBoundGold(int mark) {
-        
+
         for (MarkCreateTable markCreateTable : LIST_MARK_CREATE_TABLES) {
-            if(mark == markCreateTable.getMark()){
+            if (mark == markCreateTable.getMark()) {
                 return markCreateTable.getAg();
             }
         }
@@ -80,17 +94,19 @@ public class Config {
 //    }
 //    
     public static JsonObject configScore = new JsonObject();
-    public static void loadConfigGameScore(){
-    	try{
-    		List<Integer> ls = new ArrayList<>(Arrays.asList(5,10,15,20,-250));
-    		JsonArray arr = (JsonArray) (new JsonParser()).parse(GameUtil.gson.toJson(ls));
-    		
-    		configScore.addProperty("name", "Remi");
-    		configScore.add("score",arr);
-    	}catch (Exception e) {
-			e.printStackTrace();
-		}
-    };
+
+    public static void loadConfigGameScore() {
+        try {
+            List<Integer> ls = new ArrayList<>(Arrays.asList(5, 10, 15, 20, -250));
+            JsonArray arr = (JsonArray) (new JsonParser()).parse(GameUtil.gson.toJson(ls));
+
+            configScore.addProperty("name", "Remi");
+            configScore.add("score", arr);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    ;
     
     private static final List<ObjectRoom> ROOMS = new ArrayList<>();
 

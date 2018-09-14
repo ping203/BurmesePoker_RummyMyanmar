@@ -676,7 +676,7 @@ public class CheckCard {
     }
 
     /**
-     * check phom trong listCard cua player check list co chua 2 la da dc an ko
+     * check phom trong listCard cua player
      */
     public static boolean checkGroup(List<Integer> list) {
 
@@ -723,7 +723,7 @@ public class CheckCard {
         return n;
     }
 
-    private static boolean checkStraight(List<Integer> list) {
+    public static boolean checkStraight(List<Integer> list) {
 
         if (list.size() < MIN_CARD_GROUP || list.size() > MAX_CARD_GROUP) {
             return false;
@@ -901,21 +901,6 @@ public class CheckCard {
     }
 
     /**
-     * Check card da duoc an boi playerId
-     *
-     * @return true : cardCheck da tung dc an
-     */
-    private static boolean checkCardTakedPlace(List<ConstrainDiscard> constrainDiscard, int playerId, int cardCheck) {
-        for (int i = 0; i < constrainDiscard.size(); i++) {
-            ConstrainDiscard cd = constrainDiscard.get(i);
-            if (cd.getPlayerTakecard() == playerId && cd.getCardId() == cardCheck) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
      * Check xem cardCheck co an dc ko
      *
      * @param lsCard : danh sach bai cua player
@@ -930,37 +915,46 @@ public class CheckCard {
             }
             Collections.sort(lsCard, new SortCardAsc());
             for (int i = 0; i < lsCard.size() - 1; i++) {
-                if (lsCard.get(i).getS() != cardCheck.getS() || checkCardTakedPlace(constrainDiscard, playerId, lsCard.get(i).getI())) {/// kiem tra co cùng chất ko
+
+                if (lsCard.get(i).getS() != cardCheck.getS() || lsCard.get(i).getIsTaked()) {/// kiem tra co cùng chất ko
+
                     continue;
                 }
 
                 for (int j = i + 1; j < lsCard.size(); j++) {
-                    if (lsCard.get(j).getS() != cardCheck.getS() || checkCardTakedPlace(constrainDiscard, playerId, lsCard.get(j).getI())) {
+                    if (lsCard.get(j).getS() != cardCheck.getS() || lsCard.get(j).getIsTaked()) {
+                        //System.out.println("check 1");
                         continue;
                     }
                     ///check < i < j
                     if (lsCard.get(i).getN() == cardCheck.getN() + 1 && lsCard.get(j).getN() == cardCheck.getN() + 2) {
+                        System.out.println("check 1");
                         return true;
                     }
                     /// nam giữa
                     if (lsCard.get(i).getN() == cardCheck.getN() - 1 && lsCard.get(j).getN() == cardCheck.getN() + 1) {
+                        System.out.println("check 12");
                         return true;
                     }
                     ///to nhất
                     if (lsCard.get(i).getN() == cardCheck.getN() - 2 && lsCard.get(j).getN() == cardCheck.getN() - 1) {
+                        System.out.println("check 13");
                         return true;
                     }
                     ///A23
                     if (cardCheck.getN() == 14 && lsCard.get(i).getN() == 2 && lsCard.get(j).getN() == 3) {
+                        System.out.println("check 14");
                         return true;
                     }
 
                     ///23A
                     if (cardCheck.getN() == 2 && lsCard.get(i).getN() == 3 && lsCard.get(j).getN() == 14) {
+                        System.out.println("check 15");
                         return true;
                     }
                     ///32A
                     if (cardCheck.getN() == 3 && lsCard.get(i).getN() == 2 && lsCard.get(j).getN() == 14) {
+                        System.out.println("check 16");
                         return true;
                     }
                 }
@@ -968,20 +962,21 @@ public class CheckCard {
             //Check phom ngang
             /// các lá có gía trị = nhau và chất #
             for (int i = 0; i < lsCard.size() - 1; i++) {
+
                 if (lsCard.get(i).getN() != cardCheck.getN()) {/// ko cùng giá trị
                     continue;
                 }
-                if (checkCardTakedPlace(constrainDiscard, playerId, lsCard.get(i).getI())) {
+                if (lsCard.get(i).getIsTaked()) {
                     continue;
                 }
-                if (lsCard.get(i).getS() == cardCheck.getS() || checkCardTakedPlace(constrainDiscard, playerId, lsCard.get(i).getI())) {/// cùng chất
+                if (lsCard.get(i).getS() == cardCheck.getS()) {/// cùng chất
                     continue;
                 }/// cùng giá trị và khác chất
                 for (int j = i + 1; j < lsCard.size(); j++) {
                     if (lsCard.get(j).getN() != cardCheck.getN()) {/// ko có lá nào = card check
                         continue;
                     }
-                    if (checkCardTakedPlace(constrainDiscard, playerId, lsCard.get(j).getI())) {
+                    if (lsCard.get(j).getIsTaked()) {
                         continue;
                     }
                     if (lsCard.get(j).getS() == cardCheck.getS()) { /// cùng chất
@@ -995,25 +990,40 @@ public class CheckCard {
                 }
             }
             //Random ty le de tim ca doc
+            ///check xem card nay da nam trong ca nao chua
+            ///neu chua nam trong ca nao thi moi dc duyet
+
             int rd = (new Random()).nextInt(100);
             if ((mark > 5000 && rd > 60) || (mark > 500 && rd > 70) || (mark <= 500 && rd > 80)) {
 //				Logger.getLogger("RummyHandler").info("==>Check An Ca:" + mark + "-" + rd);
+                List<Integer> listInt = new ArrayList<>();
+                for (Card card : lsCard) {
+                    listInt.add(card.getI());
+                }
                 for (int i = 0; i < lsCard.size(); i++) {
+
                     if (lsCard.get(i).getS() != cardCheck.getS()) {/// ko cung chất
                         continue;
                     }
 //			Logger.getLogger("RummyHandler").info("==>Check An Ca:" + cardCheck.getN() + "-" + lsCard.get(i).getN());
-                    if (checkCardTakedPlace(constrainDiscard, playerId, lsCard.get(i).getI())) {
+                    if (lsCard.get(i).getIsTaked()) {
+
+                        continue;
+                    }
+                    if (checkCoupleDoc(lsCard.get(i).getI(), listInt)) {
                         continue;
                     }
                     if (lsCard.get(i).getN() == cardCheck.getN() + 1 || lsCard.get(i).getN() == cardCheck.getN() - 1
                             || lsCard.get(i).getN() == cardCheck.getN() + 2 || lsCard.get(i).getN() == cardCheck.getN() - 2) {
+
                         return true;
                     }
                     if (cardCheck.getN() == 14 && (lsCard.get(i).getN() == 2 || lsCard.get(i).getN() == 3)) {
+
                         return true;
                     }
                     if ((cardCheck.getN() == 2 || cardCheck.getN() == 3) && lsCard.get(i).getN() == 14) {
+
                         return true;
                     }
                 }
@@ -1101,11 +1111,7 @@ public class CheckCard {
                 listCardGroup.add(c);
 
             }
-            //boolean thung = checkThung(listCardGroup);
 
-//            if (!thung) {
-//                return thung;
-//            }
             if (checkDoc(listCardGroup) && checkGroup(lst)) {
                 countSanh++;
             }
@@ -1296,8 +1302,7 @@ public class CheckCard {
         return true;
     }
 
-    public static boolean checkCouple(int iCardCheck, List<Integer> iListCard) {
-
+    public static boolean checkCoupleDoc(int iCardCheck, List<Integer> iListCard) {
         List<Integer> listTmp = new ArrayList<>(iListCard);
 
         listTmp.remove(listTmp.indexOf(iCardCheck));
@@ -1306,7 +1311,7 @@ public class CheckCard {
         for (int i = 0; i < listTmp.size(); i++) {
             listCard.add(new Card(listTmp.get(i)));
         }
-        listCard.remove(cardCheck);
+        //listCard.remove(cardCheck);
         for (Card card : listCard) {
             if (card.getS() != cardCheck.getS()) {
                 continue;
@@ -1325,6 +1330,20 @@ public class CheckCard {
             }
 
         }
+        return false;
+    }
+
+    public static boolean checkCoupleNgang(int iCardCheck, List<Integer> iListCard) {
+
+        List<Integer> listTmp = new ArrayList<>(iListCard);
+
+        listTmp.remove(listTmp.indexOf(iCardCheck));
+
+        Card cardCheck = new Card(iCardCheck);
+        List<Card> listCard = new ArrayList<>();
+        for (int i = 0; i < listTmp.size(); i++) {
+            listCard.add(new Card(listTmp.get(i)));
+        }
 
         for (Card card : listCard) {
             if (card.getN() == cardCheck.getN()) {
@@ -1334,6 +1353,9 @@ public class CheckCard {
         return false;
     }
 
+    /**
+     * lay ra la bai dc phep danh ra
+     */
     public static int checkCardToDis(List<Card> listCard, List<ConstrainDiscard> constrainDiscard, int playerId, int next) {
 
         List<Integer> is = new ArrayList<>();
@@ -1361,7 +1383,7 @@ public class CheckCard {
 
                 for (int i = 0; i < list.size(); i++) {
 
-                    if (!checkCouple(list.get(i), list)) {
+                    if (!checkCoupleDoc(list.get(i), list) && !checkCoupleNgang(list.get(i), list)) {
                         if (checkDiscardAble(list.get(i), playerId, next, constrainDiscard)) {
                             if (list.get(i) == 60 || list.get(i) == 61) {
                                 continue;
@@ -1446,30 +1468,221 @@ public class CheckCard {
     }
 
     /**
-     * Check 2 la bai an dc ko nam trong 1 list
+     * Check 2 la bai an dc ko nam trong 1 phom
      *
      * @return true: listCard thoa man chi chua 1 la
      */
-    public static boolean checkCardTakePlaceInGroup(List<Integer> listCard, List<ConstrainDiscard> constrainDiscard, int playerId) {
+    public static boolean checkCardTakePlaceInGroup(List<Card> listCard, List<Integer> listCardGroup, List<ConstrainDiscard> constrainDiscard, int playerId) {
         int countCard = 0;
+        int countcardChung = 0;
         List<ConstrainDiscard> tmp = new ArrayList<>(constrainDiscard);
-       
-        for (int i = 0; i < listCard.size(); i++) {
+
+        ///đếm số lượng lá bài đã ăn so với lá bài đã có trong listCard của player
+//        for (int i = 0; i < listCard.size(); i++) {
+//            for (int j = 0; j < tmp.size(); j++) {
+//                if (listCard.get(i).getI() == tmp.get(j).getCardId() && tmp.get(j).getPlayerTakecard() == playerId){
+//                    countcardChung++;
+//                }
+//            }
+//        }     
+        for (int i = 0; i < listCardGroup.size(); i++) {
             for (int j = 0; j < tmp.size(); j++) {
                 if (tmp.get(j).getPlayerTakecard() == playerId
-                        && tmp.get(j).getCardId() == listCard.get(i)) {
+                        && tmp.get(j).getCardId() == listCardGroup.get(i)
+                        && !checkNumberCardTakedPlace(listCard, tmp.get(j).getCardId(), constrainDiscard, playerId)) {
+                    ///neu so luong card cua tmp.get(i) < so luong cua card do trong list cua player
+                    /// thi van thoa man
                     countCard++;
                     tmp.remove(j);
-                    
+
                 }
             }
 
         }
-        
+
         if (countCard > 1) {
             return false;
         }
         return true;
+    }
+
+    /**
+     * dem so lan xuat hien cua cardCheck trong card da an va trong listCard cua
+     * player
+     *
+     * @return true: card cua player > card ma player da an
+     */
+    private static boolean checkNumberCardTakedPlace(List<Card> listCard, int cardCheck, List<ConstrainDiscard> constrainDiscard, int playerId) {
+        int count1 = 0;
+        int count2 = 0;
+        for (int i = 0; i < constrainDiscard.size(); i++) {
+            ///so lan card dc an boi player        
+            if (constrainDiscard.get(i).getPlayerTakecard() == playerId
+                    && constrainDiscard.get(i).getCardId() == cardCheck) {
+                count1++;
+            }
+        }
+        if (count1 > 0) {
+            ///so card da co trong list bai
+            for (int k = 0; k < listCard.size(); k++) {
+                if (cardCheck == listCard.get(k).getI()) {
+                    count2++;
+                }
+            }
+        }
+        if (count2 <= count1) {
+            return false;
+        }
+        return true;
+    }
+
+    public static int checkCardToDis1(List<Card> listCard, List<ConstrainDiscard> constrainDiscard, int playerId, int next, int numberStraight) {
+
+        List<Integer> is = new ArrayList<>();
+        for (Card card : listCard) {
+            is.add(card.getI());
+        }
+        Collections.sort(is, new Comparator<Integer>() {
+            @Override
+            public int compare(Integer o1, Integer o2) {
+
+                return (new Card(o1).getN() - 1) % 13 - (new Card(o2).getN() - 1) % 13;
+            }
+
+        });
+        int cardDis = is.get(0);
+        List<List<Integer>> lsphom = CheckCard.group(is);
+
+        ///dem so luong phom doc thoa man chua
+        ///neu chua du so luong phom doc
+        ///thi ko danh ra nhung card co the tao thanh ca doc
+        if (countStraight(lsphom) < numberStraight) {
+            for (int i1 = lsphom.size() - 1; i1 >= 0; i1--) {
+                ///loai bo nhung phom doc da co
+                List<Integer> list = lsphom.get(i1);
+                if (checkStraight(list)) {
+                    removeAllListElement(is, list);
+                }
+            }
+            for (int i1 = lsphom.size() - 1; i1 >= 0; i1--) {
+                List<Integer> list = lsphom.get(i1);
+                if (!checkGroup(list)) {
+
+                    for (int i = 0; i < list.size(); i++) {
+
+                        if (!checkCoupleDoc(list.get(i), is)) {
+                            if (checkDiscardAble(list.get(i), playerId, next, constrainDiscard)) {
+                                if (list.get(i) == 60 || list.get(i) == 61) {
+                                    continue;
+                                }
+                                cardDis = list.get(i);
+                                return cardDis;
+                            }
+                        }
+                    }
+                    for (int i = 0; i < list.size(); i++) {
+                        if (checkDiscardAble(list.get(i), playerId, next, constrainDiscard)) {
+                            cardDis = list.get(i);
+                            return cardDis;
+                        }
+                    }
+                }
+            }
+        } else {
+
+            for (int i1 = lsphom.size() - 1; i1 >= 0; i1--) {
+                List<Card> cardPhom = new ArrayList<>();
+                List<Integer> list = lsphom.get(i1);
+                for (int i = 0; i < list.size(); i++) {
+                    cardPhom.add(new Card(list.get(i)));
+                }
+                if (!checkGroup(list)) {
+
+                    for (int i = 0; i < list.size(); i++) {
+
+                        if (!checkCoupleDoc(list.get(i), list) && !checkCoupleNgang(list.get(i), list)) {
+                            if (checkDiscardAble(list.get(i), playerId, next, constrainDiscard)) {
+                                if (list.get(i) == 60 || list.get(i) == 61) {
+                                    continue;
+                                }
+                                cardDis = list.get(i);
+                                return cardDis;
+                            }
+                        }
+                    }
+                    for (int i = 0; i < list.size(); i++) {
+                        if (checkDiscardAble(list.get(i), playerId, next, constrainDiscard)) {
+                            cardDis = list.get(i);
+                            return cardDis;
+                        }
+                    }
+                } else {
+                    if (list.size() == 4) {
+
+                        if (checkDiscardAble(list.get(0), playerId, next, constrainDiscard)) {
+                            cardDis = list.get(0);
+                            return cardDis;
+                        } else {
+                            if (checkDiscardAble(list.get(3), playerId, next, constrainDiscard)) {
+                                cardDis = list.get(3);
+                                return cardDis;
+                            }
+                        }
+
+                    }
+                }
+
+            }
+        }
+        ///ko tim dc la bai nao thoa man
+        ///tach rank 3 nho nhat
+        for (int i1 = lsphom.size() - 1; i1 >= 0; i1--) {
+            List<Card> cardPhom = new ArrayList<>();
+            List<Integer> list = lsphom.get(i1);
+            for (int i = 0; i < list.size(); i++) {
+                cardPhom.add(new Card(list.get(i)));
+            }
+            if (checkNgang(cardPhom)) {
+                cardDis = list.get(0);
+                if (checkDiscardAble(cardDis, playerId, next, constrainDiscard)) {
+                    return cardDis;
+                }
+
+            }
+        }
+        ///ko co rank 3 la
+        ///tach suit nho nhat
+        for (int i1 = lsphom.size() - 1; i1 >= 0; i1--) {
+            List<Card> cardPhom = new ArrayList<>();
+            List<Integer> list = lsphom.get(i1);
+            for (int i = 0; i < list.size(); i++) {
+                cardPhom.add(new Card(list.get(i)));
+            }
+            ///sap xep de danh ra quan bai lon nhat
+            Collections.sort(list, new Comparator<Integer>() {
+                @Override
+                public int compare(Integer o1, Integer o2) {
+
+                    return (new Card(o2).getN() - 1) % 13 - (new Card(o1).getN() - 1) % 13;
+                }
+
+            });
+            if (checkDoc(cardPhom)) {
+                cardDis = list.get(0);
+                if (checkDiscardAble(cardDis, playerId, next, constrainDiscard)) {
+                    return cardDis;
+                }
+            }
+        }
+        ///ko tim dc card nao thi card nao thoa man thi danh
+        for (int i = 0; i < is.size(); i++) {
+            if (checkDiscardAble(is.get(i), playerId, next, constrainDiscard)) {
+                cardDis = is.get(i);
+                break;
+            }
+
+        }
+        return cardDis;
     }
 
 }

@@ -80,7 +80,7 @@ public class Processor implements GameProcessor {
                             lsphom.add(integers);
                         }
 
-                        board.declare(table, action.getPlayerId(), lsphom, false, serviceContract);
+                        board.declare(table, action.getPlayerId(), lsphom, false);
                         break;
                     case EVT.DATA_FOLD_CARD:
                         board.foldCard(table, action.getPlayerId(), false);
@@ -180,7 +180,7 @@ public class Processor implements GameProcessor {
                     board.foldCard(table, le.getPid(), true);
                     break;
                 case EVT.OBJECT_TIMEOUT:
-                    board.playTimeout(table, le.getPid(), le.getTurnStatus(), le.getCardId(), serviceContract);
+                    board.playTimeout(table, le.getPid(), le.getTurnStatus(), le.getCardId());
                     break;
                 case EVT.OBJECT_PLAYER_DISCONNECT:
                     board.playerDisconnected(table, le.getPid());
@@ -195,7 +195,7 @@ public class Processor implements GameProcessor {
                                 board.disCard(table, le.getPid(), null, true);
                                 break;
                             case DECLARE:
-                                board.declare(table, le.getPid(), null, true, serviceContract);
+                                board.declare(table, le.getPid(), null, true);
                                 break;
                             default:
                                 break;

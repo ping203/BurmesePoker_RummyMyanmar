@@ -23,10 +23,13 @@ import java.util.TreeMap;
 
 import net.myanmar.rummy.logic.Card;
 import net.myanmar.rummy.logic.CheckCard;
+import static net.myanmar.rummy.logic.CheckCard.checkCoupleDoc;
+import static net.myanmar.rummy.logic.CheckCard.checkCoupleNgang;
 import static net.myanmar.rummy.logic.CheckCard.checkDiscardAble;
 import static net.myanmar.rummy.logic.CheckCard.checkDoc;
 import static net.myanmar.rummy.logic.CheckCard.checkGroup;
 import static net.myanmar.rummy.logic.CheckCard.checkNgang;
+import static net.myanmar.rummy.logic.CheckCard.countStraight;
 import net.myanmar.rummy.logic.ConstrainDiscard;
 import net.myanmar.rummy.logic.SortCardAsc;
 import net.myanmar.rummy.logic.TurnStatus;
@@ -983,7 +986,7 @@ public class test {
                 for (int i = 0; i < list.size(); i++) {
 
                     System.out.println("Checkkkkkk: " + new Card(list.get(i)));
-                    if (!CheckCard.checkCouple(list.get(i), list)) {
+                    if (!CheckCard.checkCoupleDoc(list.get(i), list) && !CheckCard.checkCoupleNgang(list.get(i), list)) {
                         //System.out.println("Not couple");
                         if (list.get(i) == 60 || list.get(i) == 61) {
                             continue;
@@ -1048,15 +1051,150 @@ public class test {
         return cardDis;
     }
 
+    public static int checkCardToDis1(List<Card> listCard, int numberStraight) {
+
+        List<Integer> is = new ArrayList<>();
+        for (Card card : listCard) {
+            is.add(card.getI());
+        }
+        Collections.sort(is, new Comparator<Integer>() {
+            @Override
+            public int compare(Integer o1, Integer o2) {
+
+                return (new Card(o1).getN() - 1) % 13 - (new Card(o2).getN() - 1) % 13;
+            }
+
+        });
+        int cardDis = is.get(0);
+        List<List<Integer>> lsphom = CheckCard.group(is);
+
+        if (countStraight(lsphom) < numberStraight) {
+            for (int i1 = lsphom.size() - 1; i1 >= 0; i1--) {
+                ///loai bo nhung phom doc da co
+                List<Integer> list = lsphom.get(i1);
+                if (CheckCard.checkStraight(list)) {
+                    removeAllListElement(is, list);
+                }
+            }
+            for (int i1 = lsphom.size() - 1; i1 >= 0; i1--) {
+                List<Integer> list = lsphom.get(i1);
+                if (!checkGroup(list)) {
+
+                    for (int i = 0; i < list.size(); i++) {
+
+                        if (!checkCoupleDoc(list.get(i), is)) {
+
+                            if (list.get(i) == 60 || list.get(i) == 61) {
+                                continue;
+                            }
+                            cardDis = list.get(i);
+                            return cardDis;
+
+                        }
+                    }
+                    for (int i = 0; i < list.size(); i++) {
+
+                        cardDis = list.get(i);
+                        System.out.println("Card dis2: " + cardDis);
+                        return cardDis;
+
+                    }
+                }
+            }
+        } else {
+
+            for (int i1 = lsphom.size() - 1; i1 >= 0; i1--) {
+                List<Integer> list = lsphom.get(i1);
+               
+                for (Integer integer : list) {
+                    Card c2 = new Card(integer);
+                   
+                }
+                if (!checkGroup(list)) {
+
+                    System.out.println("not group");
+                    for (int i = 0; i < list.size(); i++) {
+
+                        System.out.println("Checkkkkkk: " + new Card(list.get(i)));
+                        if (!CheckCard.checkCoupleDoc(list.get(i), list) && !CheckCard.checkCoupleNgang(list.get(i), list)) {
+                            //System.out.println("Not couple");
+                            if (list.get(i) == 60 || list.get(i) == 61) {
+                                continue;
+                            }
+                            System.out.println("Card dis1: " + new Card(cardDis).toString());
+                            cardDis = list.get(i);
+                            return cardDis;
+
+                        }
+                    }
+                    for (int i = 0; i < list.size(); i++) {
+
+                        cardDis = list.get(i);
+                        System.out.println("Card dis2: " + cardDis);
+                        return cardDis;
+
+                    }
+                } else {
+                    if (list.size() == 4) {
+                        //System.out.println("Card dis3: " + cardDis);
+                        cardDis = list.get(0);
+                    }
+
+                }
+            }
+        }
+        ///ko tim dc la bai nao thoa man
+        ///tach rank 3 nho nhat
+        for (int i1 = lsphom.size() - 1; i1 >= 0; i1--) {
+            List<Card> cardPhom = new ArrayList<>();
+            List<Integer> list = lsphom.get(i1);
+            for (int i = 0; i < list.size(); i++) {
+                cardPhom.add(new Card(list.get(i)));
+            }
+            if (checkNgang(cardPhom)) {
+                cardDis = list.get(0);
+                return cardDis;
+            }
+        }
+        ///ko co rank 3 la
+        ///tach suit nho nhat
+        for (int i1 = lsphom.size() - 1; i1 >= 0; i1--) {
+            List<Card> cardPhom = new ArrayList<>();
+            List<Integer> list = lsphom.get(i1);
+            for (int i = 0; i < list.size(); i++) {
+                cardPhom.add(new Card(list.get(i)));
+            }
+            ///sap xep de danh ra quan bai lon nhat
+            Collections.sort(list, new Comparator<Integer>() {
+                @Override
+                public int compare(Integer o1, Integer o2) {
+
+                    return (new Card(o2).getN() - 1) % 13 - (new Card(o1).getN() - 1) % 13;
+                }
+
+            });
+            if (checkDoc(cardPhom)) {
+                cardDis = list.get(0);
+                return cardDis;
+            }
+        }
+
+        return cardDis;
+    }
+
     ///
     public static void main(String[] args) {
 
         List<Integer> listInt = new ArrayList<>();
 
         List<Integer> listTmp = new ArrayList<>();
-//        listTmp.add(12);
-//        listTmp.add(14);
-//        listTmp.add(26);
+        List<Integer> listTmp1 = new ArrayList<>();
+        listTmp1.add(12);
+        listTmp1.add(13);
+        listTmp1.add(26);
+//        boolean checkCouple = CheckCard.checkCoupleDoc(12, listTmp1);
+//        System.out.println("Check couple: " + checkCouple);
+//        System.out.println("**************************************");
 //        listTmp.add(60);
 //        listTmp.add(61);
 //        listTmp.add(23); 
@@ -1065,28 +1203,23 @@ public class test {
 //        listTmp.add(49);
 //        listTmp.add(49);
         ///listTest
-        //29 4♦,42 4♥,42 4♥,6 7♠,7 8♠,20 8♣,33 8♦,33 8♦,21 9♣,22 10♣,35 10♦,61 JKR,61 JKR,3 4♠
-        //29 4♦,42 4♥,42 4♥,7 8♠,20 8♣,33 8♦,33 8♦,21 9♣,9 10♠,22 10♣,35 10♦,61 JKR,61 JKR,6 7♠]
-        //42 4♥,5 6♠,44 6♥,7 8♠,10 J♠,10 J♠,49 J♥,37 Q♦,38 K♦,51 K♥,39 A♦,52 A♥,60 JKB,36 J♦]
-        //2 3♠,7 8♠,8 9♠,22 10♣,35 10♦,48 10♥,48 10♥,24 Q♣,25 K♣,13 A♠,26 A♣,60 JKB,9 10♠
-        //27 2♦,40 2♥,28 3♦,3 4♠,16 4♣,7 8♠,8 9♠,9 10♠,10 J♠,37 Q♦,37 Q♦,50 Q♥,52 A♥,17 5♣]
-        //46 8♥,6 7♠,44 6♥,60 JKB,43 5♥,4 5♠,37 Q♦,61 JKR,38 K♦,5 6♠,3 4♠,16 4♣,3 4♠
-        //[5,4,6],[60,43,44,46],[38,61,37],[3,16,3]
-        listTmp.add(46);
-        listTmp.add(6);
-        listTmp.add(44);
-        listTmp.add(60);
-        listTmp.add(43);
-        listTmp.add(4);
-        //listTmp.add(33);
-        listTmp.add(37);
-        listTmp.add(61);
-        listTmp.add(38);
+        //33,32,31,30],[5,18,44],[20,20,46],[10,23,23
+        //27 2♦,27 2♦,28 3♦,3 4♠,42 4♥,44 6♥,45 7♥,7 8♠,7 8♠,9 10♠,22 10♣,22 10♣,35 10♦,40 2♥
+        listTmp.add(3);
+        listTmp.add(1);
         listTmp.add(5);
-        listTmp.add(3);
-        listTmp.add(16);
-        listTmp.add(3);
-       //listTmp.add(17);
+        listTmp.add(42);
+        listTmp.add(29);
+//        listTmp.add(44);
+//        listTmp.add(45);
+//        listTmp.add(7);
+//        listTmp.add(7);
+//        listTmp.add(9);
+//        listTmp.add(22);
+//        listTmp.add(22);
+//        listTmp.add(35);
+//        listTmp.add(40);
+        //listTmp.add(17);
 //        listTmp.add(36);
 //        listTmp.add(24);
 
@@ -1111,14 +1244,17 @@ public class test {
         }
 
         System.out.println("=====================================");
-        
+
         List<ConstrainDiscard> constrainDiscard = new ArrayList<>();
-        ConstrainDiscard cd1 = new ConstrainDiscard(20, 100004361, 100001084);
-        ConstrainDiscard cd2 = new ConstrainDiscard(5, 100001084, 100004361);
-        ConstrainDiscard cd3 = new ConstrainDiscard(3, 100001084, 100004361);
+        ConstrainDiscard cd1 = new ConstrainDiscard(61, 100004537, 100003656);
+        ConstrainDiscard cd2 = new ConstrainDiscard(11, 100004537, 100003656);
+
+        ConstrainDiscard cd3 = new ConstrainDiscard(32, 100003656, 100004537);
+        //ConstrainDiscard cd4 = new ConstrainDiscard(10, 100004537, 100003656);
         constrainDiscard.add(cd1);
         constrainDiscard.add(cd2);
         constrainDiscard.add(cd3);
+        //constrainDiscard.add(cd4);
         List<Card> listCardCheck = new ArrayList<>();
         for (int i = 0; i < listTmp.size(); i++) {
             Card card = new Card(listTmp.get(i));
@@ -1131,6 +1267,9 @@ public class test {
         List<Card> cardSort = new ArrayList<>();
         for (Integer cardInt : listTmp) {
             Card c = new Card(cardInt);
+            if (cardInt == 11) {
+                c.setIsTaked(true);
+            }
             cardSort.add(c);
         }
         Collections.sort(listTmp, new Comparator<Integer>() {
@@ -1141,40 +1280,10 @@ public class test {
             }
 
         });
-        int cardInt = checkCardToDis(listCardCheck);
+        int cardInt = checkCardToDis1(listCardCheck, 3);
         Card c = new Card(cardInt);
         System.out.println("Card Dis: " + c.toString());
-//        Collections.sort(listTmp, new Comparator<Integer>() {
-//                @Override
-//                public int compare(Integer o1, Integer o2) {
-//
-//                    return new Card(o2).getN() - new Card(o1).getN();
-//                }
-//
-//            });
-//        for (int i = 0; i < listTmp.size(); i++) {
-//            Card c1 = new Card(listTmp.get(i));
-//            System.out.println("\tCard sort: " + c1.toString());
-//        }
-//        List<List<Integer>> groupRankJoker = groupRankJoker(listTmp);
-//        for (int i = 0; i < groupRankJoker.size(); i++) {
-//            List<Integer> listInt1 = groupRankJoker.get(i);
-//            System.out.println("Rank: " + i);
-//            for (int j = 0; j < listInt1.size(); j++) {
-//                Card card1 = new Card(listInt1.get(j));
-//                System.out.println("\tCard: " + card1.toString());
-//            }
-//
-//        }
-//        List<Card> listCardCheck = new ArrayList<>();
-//        for (int i = 0; i < listTmp.size(); i++) {
-//            Card card = new Card(listTmp.get(i));
-//            listCardCheck.add(card);
-//        }
-//        Map<Integer, List<Integer>> getMapRank = getMapRank(listCardCheck);
-//        Set<Integer> set = getMapRank.keySet();
-//
-////        
+
         List<List<Integer>> group = CheckCard.group(listTmp);
         int countSanh = 0;
         int fund = 0;
@@ -1183,9 +1292,9 @@ public class test {
             List<Card> listCard = new ArrayList<>();
             System.out.println("Phom: ");
             boolean checkGroup = CheckCard.checkGroup(lst);
-            boolean checkValiGroup = CheckCard.checkCardTakePlaceInGroup(lst, constrainDiscard,100004361);
+            boolean checkValiGroup = CheckCard.checkCardTakePlaceInGroup(listCardCheck, lst, constrainDiscard, 100003656);
             System.out.println("Check group: " + checkGroup + " ---- " + checkValiGroup);
-            if (!CheckCard.checkGroup(lst)|| !CheckCard.checkCardTakePlaceInGroup(lst, constrainDiscard,100004361)) {
+            if (!CheckCard.checkGroup(lst) || !CheckCard.checkCardTakePlaceInGroup(listCardCheck, lst, constrainDiscard, 100003656)) {
                 System.out.println("1111111111111111111111111");
             }
             Collections.sort(lst, new Comparator<Integer>() {
@@ -1208,6 +1317,8 @@ public class test {
                 System.out.println("Check doc");
             }
         }
+        boolean checkIsTakeCard = CheckCard.IsTakeCard(cardSort, new Card(10), 10000, constrainDiscard, 100003656);
+        System.out.println("Check Card is Take: " + checkIsTakeCard);
 //            boolean check = CheckCard.checkGroup(lst);
 //            //System.out.println("Check : " + check);
 //            boolean checkPhomDoc = CheckCard.checkDoc(listCard);
@@ -1248,13 +1359,13 @@ public class test {
         System.out.println("After");
         for (int i = 0; i < listTest.size(); i++) {
             System.out.println("\tTest: " + listTest.get(i));
-            
+
         }
         listTest.remove(0);
         System.out.println("Before");
         for (int i = 0; i < listTest.size(); i++) {
             System.out.println("\tTest: " + listTest.get(i));
-            
+
         }
     }
 }
